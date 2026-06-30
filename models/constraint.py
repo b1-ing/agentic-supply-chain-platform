@@ -1,15 +1,33 @@
-# models/constraint.py
-from pydantic import BaseModel
-from typing import List, Tuple, Optional
+# models/constraints.py
 
-class TrafficIncidentConstraint(BaseModel):
-    incident_id: Optional[str] = None
-    type: str          # e.g., "Accident", "Roadwork"
-    latitude: float
-    longitude: float
-    message: str       # e.g., "Accident on AYE (towards Tuas) after Exit 27."
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
-class RoadSpeedConstraint(BaseModel):
-    start_coord: Tuple[float, float] # (lat, lon)
-    end_coord: Tuple[float, float]   # (lat, lon)
-    speed_band: int                  # 1-8 scale from LTA
+
+class ConstraintAction(Enum):
+    REMOVE = "remove"
+    PENALIZE = "penalize"
+    LIMIT = "limit"
+
+
+@dataclass
+class RoutingConstraint:
+    id: str
+
+    action: ConstraintAction
+
+    affected_edges: list[int]
+
+    value: float | None
+
+    start: datetime | None
+
+    end: datetime | None
+
+    confidence: float
+
+    reason: str
+
+    metadata: dict[str, Any]

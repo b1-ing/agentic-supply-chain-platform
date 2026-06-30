@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.weather_service import WeatherService
 
+
 def test_weather_pipeline():
     print("==================================================")
     print("[*] Initializing Data.gov.sg Weather Service...")
@@ -25,6 +26,7 @@ def test_weather_pipeline():
         pprint(raw_metadata)
     else:
         print("[-] Test Failed. Unable to fetch data from the server endpoint.")
+
 
 if __name__ == "__main__":
     test_weather_pipeline()

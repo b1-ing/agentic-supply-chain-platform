@@ -4,6 +4,7 @@ import zipfile
 import requests
 from pprint import pprint
 
+
 def test_static_roadworks():
     url = "https://datamall.lta.gov.sg/content/dam/datamall/datasets/TrafficRelated/RoadWorks.zip"
 
@@ -24,10 +25,14 @@ def test_static_roadworks():
                 print(f"[+] Files found inside archive: {file_list}")
 
                 # FIX: Look specifically for the JSON file instead of taking index 0
-                target_filename = next((f for f in file_list if f.endswith('.json')), None)
+                target_filename = next(
+                    (f for f in file_list if f.endswith(".json")), None
+                )
 
                 if not target_filename:
-                    print("[-] Error: Could not find a .json file inside the zip archive.")
+                    print(
+                        "[-] Error: Could not find a .json file inside the zip archive."
+                    )
                     return
 
                 print(f"[*] Extracting and parsing: {target_filename}...")
@@ -55,6 +60,7 @@ def test_static_roadworks():
 
     except Exception as e:
         print(f"\n[-] Pipeline Error: {e}")
+
 
 if __name__ == "__main__":
     test_static_roadworks()

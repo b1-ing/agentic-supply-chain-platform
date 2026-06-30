@@ -2,6 +2,7 @@
 import requests
 from typing import Dict, Any, Optional
 
+
 class WeatherService:
     def __init__(self, collection_id: int = 1459):
         """
@@ -39,14 +40,16 @@ class WeatherService:
         typically pulled from the /snapshot or /data endpoints relative to the collection.
         """
         # If the API documentation specifies an exact endpoint for live data rows:
-        url = f"{self.base_url}/snapshot" # or /data depending on the final guide
+        url = f"{self.base_url}/snapshot"  # or /data depending on the final guide
 
         try:
             response = requests.get(url, timeout=15)
             if response.status_code == 200:
                 return response.json()
             else:
-                print(f"[!] Target snapshot endpoint returned status code: {response.status_code}")
+                print(
+                    f"[!] Target snapshot endpoint returned status code: {response.status_code}"
+                )
                 return {}
         except Exception as e:
             print(f"[-] Weather API Live Snapshot Failed: {e}")
