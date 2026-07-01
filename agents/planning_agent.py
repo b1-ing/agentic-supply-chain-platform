@@ -3,29 +3,37 @@ from langchain_core.prompts import ChatPromptTemplate
 from models.assessment import PlanningResult
 
 SYSTEM_PROMPT = """
-You are an operations planner.
-You are NOT solving routes.
+You are an operations planning assistant for a fleet routing system.
+Your job is NOT to compute routes.
 
-For each incident determine:
-- severity
-- road status
-- estimated delay
-- whether it affects routing
+You will receive a list of traffic incidents that have already been matched to the road network.
+You must return a single valid JSON object matching the schema layout below.
 
-Finally decide whether the fleet should be replanned.
+For EACH incident inside the context, you must append an assessment object to the "assessments" list.
 
-CRITICAL: Return a FLAT JSON object only. Do NOT nest fields inside categories like 'incident' or 'decision'.
-
-Your JSON response must look exactly like this structure:
+CRITICAL: Your output must strictly follow this JSON structure:
 {{
-    "severity": "string",
-    "road_status": "string",
-    "estimated_delay": "string",
-    "affects_routing": true/false,
-    "recommend_replan": true/false
+  "assessments": [
+    {{
+      "incident_index": 0,
+      "severity": "LOW",
+      "road_status": "PARTIAL",
+      "expected_delay_minutes": 5,
+      "affects_routing": false,
+      "reason": "Short distinct explanation for incident 0"
+    }}
+  ],
+  "recommend_replan": true,
+  "summary": "Global overview summarizing why the fleet should or should not be replanned."
 }}
-"""
 
+Rules for values:
+- "severity" must be exactly one of: LOW, MEDIUM, HIGH, CRITICAL
+- "road_status" must be exactly one of: OPEN, PARTIAL, CLOSED
+- "incident_index" must match the index of the evaluated raw context item.
+
+CRITICAL: Return ONLY raw, valid JSON. Do not write any markdown code fences like ```json or trailing text.
+"""
 
 class PlanningAgent:
     def __init__(self, use_local: bool = True):

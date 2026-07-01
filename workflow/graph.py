@@ -18,12 +18,16 @@ def build_workflow():
     builder.add_node("match", match_node)
     builder.add_node("context", context_node)
     builder.add_node("planning", planning_node)
+    builder.add_node("constraint", constraint_node)
+    builder.add_node("graph", graph_node)
 
     builder.set_entry_point("fetch")
 
     builder.add_edge("fetch", "match")
     builder.add_edge("match", "context")
     builder.add_edge("context", "planning")
-    builder.add_edge("planning", END)
+    builder.add_edge("planning", "constraint")
+    builder.add_edge("constraint", "graph")
+    builder.add_edge("graph", END)
 
     return builder.compile()

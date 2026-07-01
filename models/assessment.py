@@ -25,8 +25,6 @@ class IncidentAssessment(BaseModel):
 
 
 class PlanningResult(BaseModel):
-    severity: str
-    affects_routing: bool
+    assessments: list[IncidentAssessment]
     recommend_replan: bool
-    road_status: str
-    estimated_delay: str
+    summary: str

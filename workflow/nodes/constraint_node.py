@@ -27,7 +27,7 @@ def constraint_node(state):
             "edges": matched["edges"],
 
             "penalty": PENALTIES[
-                assessment.severity.value
+                assessment.severity
             ],
 
             "closed": assessment.road_status.value == "CLOSED"
