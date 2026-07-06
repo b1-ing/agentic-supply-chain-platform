@@ -8,10 +8,11 @@ from services.osm_service import OSMService
 from services.tomtom_service import TomTomTileService
 from workflow.graph import build_workflow
 import os
-
+import asyncio
 from utils.matrix_generator import generate_cvrp_time_matrix
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
+from services.lta_service import LTATrafficService, LTADataMallClient
 
 def solve_cvrp(time_matrix: list, num_vehicles: int, depot_index: int):
     """Standard Google OR-Tools CVRP Execution Loop."""
@@ -25,7 +26,9 @@ def solve_cvrp(time_matrix: list, num_vehicles: int, depot_index: int):
     def time_callback(from_index, to_index):
         from_node = manager.IndexToNode(from_index)
         to_node = manager.IndexToNode(to_index)
-        return int(time_matrix[from_node][to_node] * 60) # Convert minutes to seconds for integer solver
+        return int(
+            time_matrix[from_node][to_node] * 60
+        )  # Convert minutes to seconds for integer solver
 
     transit_callback_index = routing.RegisterTransitCallback(time_callback)
     routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
@@ -45,19 +48,24 @@ def solve_cvrp(time_matrix: list, num_vehicles: int, depot_index: int):
     else:
         print("[-] Solver failed to locate a valid routing path.")
 
+
 def draw_tile_grid(m, bbox, zoom):
     """Calculates and draws the boundaries of the TomTom XYZ tiles."""
     min_lat, max_lat, min_lon, max_lon = bbox
 
     def get_tile_frac(lat, lon, z):
         lat_rad = math.radians(lat)
-        n = 2.0 ** z
+        n = 2.0**z
         x = (lon + 180.0) / 360.0 * n
-        y = (1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n
+        y = (
+            (1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi)
+            / 2.0
+            * n
+        )
         return x, y
 
     def tile_to_lat_lon(x, y, z):
-        n = 2.0 ** z
+        n = 2.0**z
         lon = x / n * 360.0 - 180.0
         lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * y / n)))
         lat = math.degrees(lat_rad)
@@ -84,7 +92,7 @@ def draw_tile_grid(m, bbox, zoom):
                 fill=True,
                 fill_color="#00FFFF",
                 fill_opacity=0.03,
-                popup=f"<b>Tile Address</b><br>Zoom: {zoom}<br>X: {tx}<br>Y: {ty}"
+                popup=f"<b>Tile Address</b><br>Zoom: {zoom}<br>X: {tx}<br>Y: {ty}",
             ).add_to(tile_group)
 
             center_lat = (nw_lat + se_lat) / 2
@@ -93,15 +101,14 @@ def draw_tile_grid(m, bbox, zoom):
                 [center_lat, center_lon],
                 icon=folium.DivIcon(
                     html=f'<div style="font-size: 10px; color: #00FFFF; font-weight: bold; background: rgba(0,0,0,0.5); padding: 2px; border-radius: 3px; width: 80px; text-align: center;">X:{tx}, Y:{ty}</div>'
-                )
+                ),
             ).add_to(tile_group)
 
     return tile_group
 
 
-def create_combined_dashboard(world_state, zoom_level=12):
+def create_combined_dashboard(graph, zoom_level=12):
     """Generates an interactive Leaflet map overlaying tiles and graph costs."""
-    graph = world_state.graph
 
     m = folium.Map(location=[1.3521, 103.8198], zoom_start=11, tiles="cartodbpositron")
 
@@ -122,25 +129,28 @@ def create_combined_dashboard(world_state, zoom_level=12):
         if "geometry" in data:
             coords = [(p[1], p[0]) for p in data["geometry"].coords]
         else:
-            coords = [(graph.nodes[u]["y"], graph.nodes[u]["x"]), (graph.nodes[v]["y"], graph.nodes[v]["x"])]
+            coords = [
+                (graph.nodes[u]["y"], graph.nodes[u]["x"]),
+                (graph.nodes[v]["y"], graph.nodes[v]["x"]),
+            ]
 
         # -----------------------------------------------------------------
         # TOMTOM COLOURED TRAFFIC STATUS SCHEME
         # -----------------------------------------------------------------
         if data.get("closed") or cost == float("inf"):
-            color = "#111111"       # Charcoal / Black -> Road Closed
+            color = "#111111"  # Charcoal / Black -> Road Closed
             weight = 4.5
         elif traffic_level >= 0.80:
-            color = "#810000"       # Dark Burgundy -> Heavy Gridlock
+            color = "#810000"  # Dark Burgundy -> Heavy Gridlock
             weight = 4.0
         elif traffic_level >= 0.40:
-            color = "#E21818"       # Bright Red -> Congested Delays
+            color = "#E21818"  # Bright Red -> Congested Delays
             weight = 3.5
         elif traffic_level >= 0.15:
-            color = "#FFA117"       # Orange -> Moderate Slowdowns
+            color = "#FFA117"  # Orange -> Moderate Slowdowns
             weight = 2.5
         else:
-            color = "#00D26A"       # Vibrant Green -> Free Flow
+            color = "#00D26A"  # Vibrant Green -> Free Flow
             weight = 1.5
 
         popup_text = (
@@ -151,18 +161,93 @@ def create_combined_dashboard(world_state, zoom_level=12):
         )
 
         folium.PolyLine(
-            locations=coords,
-            color=color,
-            weight=weight,
-            opacity=0.85,
-            popup=popup_text
+            locations=coords, color=color, weight=weight, opacity=0.85, popup=popup_text
         ).add_to(graph_edges_layer)
 
     graph_edges_layer.add_to(m)
     folium.LayerControl(collapsed=False).add_to(m)
 
     m.save("singapore_tiles_dashboard.html")
-    print("[*] Dashboard compiled! Open 'singapore_tiles_dashboard.html' in your browser to inspect.")
+    print(
+        "[*] Dashboard compiled! Open 'singapore_tiles_dashboard.html' in your browser to inspect."
+    )
+
+import json
+import matplotlib.pyplot as plt
+from shapely.geometry import mapping, LineString
+
+def save_tomtom_segments_to_geojson(traffic_segments: list, filepath: str = "tomtom_traffic_flow.geojson"):
+    """
+    Converts raw parsed TomTom traffic segments into a GeoJSON feature collection
+    and saves it to disk for direct loading into QGIS.
+    """
+    geojson_features = []
+
+    for idx, segment in enumerate(traffic_segments):
+        geom = segment.get("geometry")
+        if not geom:
+            continue
+
+        # Ensure it's a valid Shapely geometry object
+        if isinstance(geom, LineString):
+            # mapping() converts the Shapely geometry into a standard GeoJSON dict
+            geom_dict = mapping(geom)
+        else:
+            # Skip if geometry format is broken or unparsed
+            continue
+
+        # Compile properties, ensuring all values are JSON serializable
+        properties = {
+            "id": idx,
+            "traffic_level": float(segment.get("traffic_level", 1.0)),
+            "closed": bool(segment.get("closed", False)),
+            "congestion_factor": float(1.0 - segment.get("traffic_level", 1.0)) # For easier styling
+        }
+
+        # Handle any optional fields TomTom might provide
+        if "name" in segment:
+            properties["name"] = segment["name"]
+
+        feature = {
+            "type": "Feature",
+            "geometry": geom_dict,
+            "properties": properties
+        }
+        geojson_features.append(feature)
+
+    feature_collection = {
+        "type": "FeatureCollection",
+        "features": geojson_features
+    }
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(feature_collection, f, indent=4)
+
+    print(f"[+] Successfully exported {len(geojson_features)} TomTom segments to '{filepath}'")
+
+
+def plot_tomtom_segments_instantly(traffic_segments: list):
+    """
+    Quickly renders the TomTom segments using matplotlib to verify
+    the geographic distribution and scale without opening QGIS.
+    """
+    plt.figure(figsize=(10, 8))
+
+    for segment in traffic_segments:
+        geom = segment.get("geometry")
+        if isinstance(geom, LineString):
+            x, y = geom.xy
+            # Color-code lines roughly by traffic level (lower values = more red/congested)
+            flow = segment.get("traffic_level", 1.0)
+            color = "red" if flow < 0.4 else "orange" if flow < 0.8 else "green"
+
+            plt.plot(x, y, color=color, linewidth=1.5)
+
+    plt.title("TomTom Live Traffic Segments Cache Stream")
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.grid(True)
+    plt.show()
 
 
 # =====================================================================
@@ -171,26 +256,56 @@ def create_combined_dashboard(world_state, zoom_level=12):
 if __name__ == "__main__":
     print("[*] Initializing OpenStreetMap environment for Singapore...")
     osm = OSMService()
-    graph = osm.load_graph("Singapore")
+    ox.settings.useful_tags_way.extend(
+        [
+            "maxheight",  # Max vehicle height allowed
+            "maxweight",  # Max vehicle weight allowed
+            "maxwidth",  # Max vehicle width allowed
+            "bridge",  # Indicates if edge is a bridge ('yes' or 'no')
+            "lanes",  # Number of lanes on the roadway
+        ]
+    )
+    graph = ox.graph_from_place("Singapore", network_type="drive")
     graph = ox.add_edge_speeds(graph)
     graph = ox.add_edge_travel_times(graph)
 
-    print("[*] Contacting TomTom Traffic flow stream...")
-    # Clean fallback check for missing environment key variables
-    api_key = os.getenv("TOMTOM_API_KEY")
-    if not api_key:
-        raise ValueError("Missing TOMTOM_API_KEY inside your local environment variable stack.")
+    os.makedirs("debug", exist_ok=True)
+    nodes, edges = ox.graph_to_gdfs(graph)
 
-    # Initialize service which locks back-end pulls to Zoom 12
-    tomtom = TomTomTileService(api_key=api_key)
-    graph = tomtom.sync_network_flow(graph)
+    nodes.to_file("debug/nodes.geojson", driver="GeoJSON")
+    edges.to_file("debug/edges.geojson", driver="GeoJSON")
+
+
+    #     # Grab the data dictionary of the first edge
+    #     first_edge_data = next()next(iter(graph.edges(data=True)))[2]
+    #
+    #     print("\n[+] Raw dictionary of a sample edge:")
+    #     for key, value in first_edge_data.items():
+    #         print(f"  {key}: {value}")
+
+#     print("[*] Contacting TomTom Traffic flow stream...")
+#     # Initialize service which locks back-end pulls to Zoom 12
+#     tomtom = TomTomTileService()
+#     graph = tomtom.sync_network_flow(graph)
+
+    lta_client = LTADataMallClient()
+    lta = LTATrafficService(lta_client)
+    graph = asyncio.run(lta.sync_network_flow_async(graph))
+
+    print("[*] Capturing post-sync network data structures...")
+    _, updated_edges = ox.graph_to_gdfs(graph)
+
+    # Export this updated dataframe to file
+    updated_edges.to_file("debug/edges_with_traffic.geojson", driver="GeoJSON")
+    print("[+] Successfully exported debug/edges_with_traffic.geojson")
+
 
     # =====================================================================
     # DIAGNOSTIC CHECK: VERIFY TRAFFIC PROPAGATION
     # =====================================================================
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("[*] RUNNING TRAFFIC DATA INVENTORY CHECK...")
-    print("="*50)
+    print("=" * 50)
 
     total_edges = 0
     edges_with_traffic_level = 0
@@ -218,7 +333,12 @@ if __name__ == "__main__":
     print(f"[>] Edges with 'routing_cost' key:    {edges_with_routing_cost}")
     print(f"[>] Edges with Active Traffic (> 0):   {congested_edges_count}")
     print(f"[>] Edges marked Closed (Blocked):     {closed_edges_count}")
-    print("="*50 + "\n")
+    print("=" * 50 + "\n")
+
+    print("\n[*] Spinning up the visualization dashboard engine...")
+    create_combined_dashboard(graph, zoom_level=12)
+
+    breakpoint()
     # =====================================================================
 
     # Wrap inside the state channel dataclass container
@@ -240,7 +360,7 @@ if __name__ == "__main__":
         (1.3521, 103.8198),  # Depot (Singapore Center)
         (1.3214, 103.7468),  # Customer 1 (Jurong East)
         (1.4368, 103.8315),  # Customer 2 (Yishun)
-        (1.3559, 103.9870)   # Customer 3 (Changi Airport)
+        (1.3559, 103.9870),  # Customer 3 (Changi Airport)
     ]
 
     # Generate the N x N Matrix

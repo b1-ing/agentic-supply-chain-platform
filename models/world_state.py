@@ -7,6 +7,7 @@ from models.events import TrafficIncident
 # from models.vehicle import Vehicle
 # from models.mission import Mission
 
+
 @dataclass
 class WorldState:
     # 1. Non-default arguments MUST go at the very top

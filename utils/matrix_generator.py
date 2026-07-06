@@ -4,9 +4,9 @@ import networkx as nx
 import numpy as np
 from typing import List, Dict, Tuple
 
+
 def generate_cvrp_time_matrix(
-        graph: nx.MultiDiGraph,
-        locations: List[Tuple[float, float]]
+    graph: nx.MultiDiGraph, locations: List[Tuple[float, float]]
 ) -> np.ndarray:
     """
     Takes a list of GPS points [(lat, lon), ...] and finds the shortest travel paths
@@ -14,6 +14,7 @@ def generate_cvrp_time_matrix(
     """
     # 1. Map your physical delivery lat/lon coordinates to the nearest OSM node IDs
     import osmnx as ox
+
     print("[*] Snapping delivery coordinates to the nearest road network nodes...")
 
     lats, lons = zip(*locations)
@@ -23,13 +24,13 @@ def generate_cvrp_time_matrix(
     time_matrix = np.zeros((num_nodes, num_nodes), dtype=float)
 
     # 2. Compute all-pairs shortest paths using the traffic 'routing_cost' weight
-    print(f"[*] Computing traffic-aware cost weights for a {num_nodes}x{num_nodes} matrix...")
+    print(
+        f"[*] Computing traffic-aware cost weights for a {num_nodes}x{num_nodes} matrix..."
+    )
     for i, source_node in enumerate(node_ids):
         # Dijkstra's algorithm from this source node to all other nodes in the network
         lengths = nx.single_source_dijkstra_path_length(
-            graph,
-            source_node,
-            weight="routing_cost"
+            graph, source_node, weight="routing_cost"
         )
 
         for j, target_node in enumerate(node_ids):

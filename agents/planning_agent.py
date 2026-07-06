@@ -35,6 +35,7 @@ Rules for values:
 CRITICAL: Return ONLY raw, valid JSON. Do not write any markdown code fences like ```json or trailing text.
 """
 
+
 class PlanningAgent:
     def __init__(self, use_local: bool = True):
         # 1. Check if we want to point to the local server

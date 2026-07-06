@@ -44,10 +44,7 @@ def graph_node(state: dict) -> dict:
 
     # 3. Pass the objects living inside the world state directly into the builder.
     # Note: NetworkX modifies the graph object in-place.
-    world.graph = builder.apply_constraints(
-        world.graph,
-        world.constraints
-    )
+    world.graph = builder.apply_constraints(world.graph, world.constraints)
 
     # 4. Return the updated world object back into the state channel
     return {"world": world}

@@ -5,6 +5,7 @@ from langsmith import traceable
 
 agent = PlanningAgent()
 
+
 # Un-comment this whenever you want to see visual traces in your LangSmith dashboard!
 # @traceable(name="Planning Agent Node")
 def planning_node(state):
