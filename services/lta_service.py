@@ -10,6 +10,10 @@ from shapely.strtree import STRtree
 from dotenv import load_dotenv
 import httpx
 import asyncio
+import math
+import geopandas as gpd
+import json
+
 load_dotenv()
 
 
@@ -24,6 +28,45 @@ class LTADataMallClient:
         self.base_url = "https://datamall2.mytransport.sg/ltaodataservice"
         self.headers = {"AccountKey": self.account_key, "accept": "application/json"}
 
+    def export_lta_segments(self, lta_segments, output="debug/lta_segments.geojson"):
+        rows = []
+
+        for seg in lta_segments:
+            try:
+                line = LineString(
+                    [
+                        (float(seg["StartLon"]), float(seg["StartLat"])),
+                        (float(seg["EndLon"]), float(seg["EndLat"])),
+                    ]
+                )
+
+                rows.append(
+                    {
+                        "link_id": seg["LinkID"],
+                        "road_name": seg["RoadName"],
+                        "road_category": int(seg["RoadCategory"]),
+                        "speed_band": int(seg["SpeedBand"]),
+                        "min_speed": int(seg["MinimumSpeed"]),
+                        "max_speed": int(seg["MaximumSpeed"]),
+                        "geometry": line,
+                    }
+                )
+
+            except Exception as e:
+                print(f"Skipping LinkID {seg.get('LinkID')}: {e}")
+
+        gdf = gpd.GeoDataFrame(
+            rows,
+            geometry="geometry",
+            crs="EPSG:4326",
+        )
+
+        os.makedirs("debug", exist_ok=True)
+
+        gdf.to_file(output, driver="GeoJSON")
+
+        print(f"[+] Exported {len(gdf)} LTA segments to {output}")
+
     async def fetch_all_pages_async(self, endpoint: str) -> List[Dict[str, Any]]:
         """Handles the 500-record pagination limit asynchronously via OData ?$skip with a 2s throttle."""
         results = []
@@ -32,7 +75,7 @@ class LTADataMallClient:
 
         # Use an async client context manager (or pass a shared client instance to the method)
         async with httpx.AsyncClient() as client:
-            while skip<500:
+            while True:
                 params = {"$skip": skip} if skip > 0 else {}
                 try:
                     response = await client.get(
@@ -65,6 +108,7 @@ class LTADataMallClient:
                     print(f"[-] Request failed on endpoint {endpoint}: {e}")
                     break
 
+        self.export_lta_segments(results)
         return results
 
     def fetch_all_pages(self, endpoint: str) -> List[Dict[str, Any]]:
@@ -73,7 +117,7 @@ class LTADataMallClient:
         skip = 0
         url = f"{self.base_url}/{endpoint}"
 
-        while skip<500: #REVERT TO TRUE AFTER TESTING
+        while skip < 500:  # REVERT TO TRUE AFTER TESTING
             params = {"$skip": skip} if skip > 0 else {}
             try:
                 response = requests.get(
@@ -124,15 +168,17 @@ class LTATrafficService:
             7: 0.0,  # 70-80 km/h
             8: 0.0,  # > 80 km/h
         }
-    def calculate_bearing(lat1, lon1, lat2, lon2):
+
+    def calculate_bearing(self, lat1, lon1, lat2, lon2):
         """Calculates the bearing between two points in degrees (0-360)."""
         d_lon = math.radians(lon2 - lon1)
         y = math.sin(d_lon) * math.cos(math.radians(lat2))
-        x = math.cos(math.radians(lat1)) * math.sin(math.radians(lat2)) - \
-            math.sin(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.cos(d_lon)
+        x = math.cos(math.radians(lat1)) * math.sin(math.radians(lat2)) - math.sin(
+            math.radians(lat1)
+        ) * math.cos(math.radians(lat2)) * math.cos(d_lon)
         return (math.degrees(math.atan2(y, x)) + 360) % 360
 
-    def is_same_direction(bearing1, bearing2, tolerance=35):
+    def is_same_direction(self, bearing1, bearing2, tolerance=35):
         """Checks if two bearings point in roughly the same direction."""
         diff = abs(bearing1 - bearing2)
         return min(diff, 360 - diff) <= tolerance
@@ -140,9 +186,15 @@ class LTATrafficService:
     # ==========================================
     # STREAM 1: SPATIAL SPEED BAND INJECTION
     # ==========================================
-    async def sync_network_flow_async(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
-        """Spatially projects paginated LTA speed segments onto OpenStreetMap graph edges."""
-        lta_segments = await self.client.fetch_all_pages_async(self.speed_bands_endpoint)
+    async def sync_network_flow_async(
+        self, graph: nx.MultiDiGraph, cache_path: str = "cache/lta_osm_mapping.json"
+    ) -> nx.MultiDiGraph:
+        """Spatially projects paginated LTA speed segments onto OpenStreetMap graph edges,
+        caching the spatial mapping to disk to bypass heavy calculations on subsequent runs."""
+
+        lta_segments = await self.client.fetch_all_pages_async(
+            self.speed_bands_endpoint
+        )
         print(
             f"[*] [Speed Bands] Ingested {len(lta_segments)} raw national road links."
         )
@@ -150,85 +202,124 @@ class LTATrafficService:
         if not lta_segments:
             return graph
 
-        # 1. Index your NetworkX edge lines spatially
-        graph_edges = []
-        edge_references = []
-        for u, v, k, edge_data in graph.edges(keys=True, data=True):
-            if "geometry" in edge_data:
-                graph_edges.append(edge_data["geometry"])
-                edge_references.append((u, v, k, edge_data))
-            else:
-                node_u, node_v = graph.nodes[u], graph.nodes[v]
-                fallback_line = LineString(
-                    [(node_u["x"], node_u["y"]), (node_v["x"], node_v["y"])]
-                )
-                graph_edges.append(fallback_line)
-                edge_references.append((u, v, k, edge_data))
+        mapping_cache = {}
+        cache_exists = os.path.exists(cache_path)
 
-        spatial_tree = STRtree(graph_edges)
-
-        # Buffer window set to ~45 meters to safely link parallel highway dividers
-        match_buffer_degrees = 0.0002
-        updated_count = 0
-
-        # 2. Loop through spatial links and map them
-        # Replace the loop in your sync_speed_bands_to_graph function with this:
-
-        for item in lta_segments:
+        if cache_exists:
+            print(
+                f"[*] [Cache] Found spatial mapping cache at {cache_path}. Loading..."
+            )
             try:
-                #gets the start/end coordinates from the segmsents
-                summary = item.get("Location", "")
-                coords = [float(c) for c in summary.replace(",", " ").split()]
-                if len(coords) < 4:
+                with open(cache_path, "r") as f:
+                    # JSON keys are always strings, so we convert edge keys back to proper types later
+                    mapping_cache = json.load(f)
+            except Exception as e:
+                print(f"[!] Failed to read cache: {e}. Recomputing spatial tree...")
+                cache_exists = False
+
+        # --- Phase 1: Build or Load Spatial Mapping ---
+        if not cache_exists:
+            print(
+                "[*] [Spatial Tree] No valid cache found. Indexing OSM network spatially..."
+            )
+            graph_edges = []
+            edge_references = []
+
+            for u, v, k, edge_data in graph.edges(keys=True, data=True):
+                if "geometry" in edge_data:
+                    graph_edges.append(edge_data["geometry"])
+                else:
+                    node_u, node_v = graph.nodes[u], graph.nodes[v]
+                    fallback_line = LineString(
+                        [(node_u["x"], node_u["y"]), (node_v["x"], node_v["y"])]
+                    )
+                    graph_edges.append(fallback_line)
+                edge_references.append((u, v, k))
+
+            spatial_tree = STRtree(graph_edges)
+
+            print(
+                "[*] [Spatial Tree] Computing LTA-to-OSM intersections (this may take a moment)..."
+            )
+            for item in lta_segments:
+                link_id = item.get("LinkID")
+                if not link_id:
                     continue
 
-                # Explicitly map them out
-                s_lat, s_lon, e_lat, e_lon = coords[0], coords[1], coords[2], coords[3]
+                try:
+                    s_lat = float(item.get("StartLat", 0))
+                    s_lon = float(item.get("StartLon", 0))
+                    e_lat = float(item.get("EndLat", 0))
+                    e_lon = float(item.get("EndLon", 0))
 
-                 # 1. Create a directional line for the LTA segment instead of an envelope box
-                lta_line = LineString([(s_lon, s_lat), (e_lon, e_lat)])
-                lta_bearing = calculate_bearing(s_lat, s_lon, e_lat, e_lon)
+                    lta_line = LineString([(s_lon, s_lat), (e_lon, e_lat)])
+                    lta_bearing = self.calculate_bearing(s_lat, s_lon, e_lat, e_lon)
+                    tight_line_buffer = lta_line.buffer(0.00023)  # ~25 meters
 
-                # 2. Use a tight buffer (~25 meters = ~0.00023 degrees) around the actual line path
-                tight_line_buffer = lta_line.buffer(0.00023)
+                    candidate_indices = spatial_tree.query(tight_line_buffer)
+                    matched_edges = []
 
-                # Query index for candidate matches inside this regional box
-                candidate_indices = spatial_tree.query(tight_line_buffer)
+                    for idx in candidate_indices:
+                        u, v, k = edge_references[idx]
+                        edge_line = graph_edges[idx]
 
-                print("candidates:", candidate_indices)
+                        if edge_line.intersects(tight_line_buffer):
+                            edge_coords = list(edge_line.coords)
+                            if len(edge_coords) >= 2:
+                                osm_s_lon, osm_s_lat = edge_coords[0]
+                                osm_e_lon, osm_e_lat = edge_coords[-1]
+                                osm_bearing = self.calculate_bearing(
+                                    osm_s_lat, osm_s_lon, osm_e_lat, osm_e_lon
+                                )
 
-                band_value = int(item.get("SpeedBand", 5))
-                traffic_ratio = self.band_to_traffic_multiplier.get(band_value, 0.0)
+                                if not self.is_same_direction(
+                                    lta_bearing, osm_bearing, tolerance=40
+                                ):
+                                    chunk_debug = False  # skip wrong highway direction
+                                    continue
 
-                for idx in candidate_indices:
-                    u, v, k, edge_data = edge_references[idx]
-                    edge_line = graph_edges[idx]
+                            # Store matching edge references as primitive types for JSON compatibility
+                            matched_edges.append([u, v, k])
 
-                    # If the OSM road edge sits inside our LTA corridor envelope, patch it
-                    if edge_line.intersects(tight_line_buffer):
-                        edge_coords = list(edge_line.coords)
-                        if len(edge_coords) >= 2:
-                            # Use start and end nodes of the OSM edge to get its direction
-                            osm_s_lon, osm_s_lat = edge_coords[0]
-                            osm_e_lon, osm_e_lat = edge_coords[-1]
-                            osm_bearing = calculate_bearing(osm_s_lat, osm_s_lon, osm_e_lat, osm_e_lon)
+                    if matched_edges:
+                        mapping_cache[link_id] = matched_edges
 
-                            # Skip if the OSM edge points the opposite way (prevents matching wrong highway side)
-                            if not self.is_same_direction(lta_bearing, osm_bearing, tolerance=40):
-                                continue
-                        edge_data["traffic_level"] = traffic_ratio
-                        edge_data["lta_link_id"] = item.get("LinkID")
-                        edge_data["speed_band"] = band_value
+                except (KeyError, ValueError, IndexError):
+                    continue
 
-                        base_time = edge_data.get("travel_time", 1.0)
-                        edge_data["routing_cost"] = base_time * (1.0 + traffic_ratio)
-                        updated_count += 1
+            # Save computed mapping to disk
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, "w") as f:
+                json.dump(mapping_cache, f, indent=4)
+            print(
+                f"[+] [Cache] Spatial mapping successfully saved to disk at {cache_path}"
+            )
 
-            except (KeyError, ValueError, IndexError):
+        # --- Phase 2: Apply Live Traffic Speed Data ---
+        updated_count = 0
+        for item in lta_segments:
+            link_id = item.get("LinkID")
+            if not link_id or link_id not in mapping_cache:
                 continue
 
+            band_value = int(item.get("SpeedBand", 5))
+            traffic_ratio = self.band_to_traffic_multiplier.get(band_value, 0.0)
+
+            # Retrieve matched edges from cache and apply attributes
+            for u, v, k in mapping_cache[link_id]:
+                # Guard check in case the underlying graph changed since caching
+                if graph.has_edge(u, v, k):
+                    edge_data = graph[u][v][k]
+                    edge_data["traffic_level"] = traffic_ratio
+                    edge_data["lta_link_id"] = link_id
+                    edge_data["speed_band"] = band_value
+
+                    base_time = edge_data.get("travel_time", 1.0)
+                    edge_data["routing_cost"] = base_time * (1.0 + traffic_ratio)
+                    updated_count += 1
+
         print(
-            f"[+] [Speed Bands] Sync complete. Injected parameters across {updated_count} spatial edge lines."
+            f"[+] [Speed Bands] Sync complete. Injected parameters across {updated_count} network edges."
         )
         return graph
 

@@ -216,8 +216,6 @@ class TomTomTileService:
                 all_segments.extend(future.result())
         return all_segments
 
-
-
     def sync_network_flow(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
         """Updates graph routing costs using an accelerated spatial index lookup."""
 
@@ -240,9 +238,7 @@ class TomTomTileService:
 
         # ---------- DEBUG EXPORT ----------
         os.makedirs("debug", exist_ok=True)
-        gdf = gpd.GeoDataFrame(
-            traffic_segments, geometry="geometry", crs="EPSG:4326"
-        )
+        gdf = gpd.GeoDataFrame(traffic_segments, geometry="geometry", crs="EPSG:4326")
         gdf.to_file("debug/tomtom_segments.geojson", driver="GeoJSON")
         print("[+] Exported debug/tomtom_segments.geojson")
 
@@ -287,7 +283,6 @@ class TomTomTileService:
                 if edge_line.intersects(buffered_segment) or edge_line.distance(
                     segment_geom
                 ) <= (matching_tolerance_degrees):
-
                     # FIXED: Pull traffic metrics from TomTom (segment) instead of empty graph fields
                     edge_data["traffic_level"] = segment["traffic_level"]
 
@@ -316,4 +311,3 @@ class TomTomTileService:
 
         print(f"[+] Synced traffic variables across {updated_count} edge segments.")
         return graph
-

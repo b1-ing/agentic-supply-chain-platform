@@ -13,6 +13,8 @@ from utils.matrix_generator import generate_cvrp_time_matrix
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 from services.lta_service import LTATrafficService, LTADataMallClient
+from bootstrap import bootstrap
+
 
 def solve_cvrp(time_matrix: list, num_vehicles: int, depot_index: int):
     """Standard Google OR-Tools CVRP Execution Loop."""
@@ -172,11 +174,16 @@ def create_combined_dashboard(graph, zoom_level=12):
         "[*] Dashboard compiled! Open 'singapore_tiles_dashboard.html' in your browser to inspect."
     )
 
+
 import json
 import matplotlib.pyplot as plt
 from shapely.geometry import mapping, LineString
+from pathlib import Path
 
-def save_tomtom_segments_to_geojson(traffic_segments: list, filepath: str = "tomtom_traffic_flow.geojson"):
+
+def save_tomtom_segments_to_geojson(
+    traffic_segments: list, filepath: str = "tomtom_traffic_flow.geojson"
+):
     """
     Converts raw parsed TomTom traffic segments into a GeoJSON feature collection
     and saves it to disk for direct loading into QGIS.
@@ -201,29 +208,26 @@ def save_tomtom_segments_to_geojson(traffic_segments: list, filepath: str = "tom
             "id": idx,
             "traffic_level": float(segment.get("traffic_level", 1.0)),
             "closed": bool(segment.get("closed", False)),
-            "congestion_factor": float(1.0 - segment.get("traffic_level", 1.0)) # For easier styling
+            "congestion_factor": float(
+                1.0 - segment.get("traffic_level", 1.0)
+            ),  # For easier styling
         }
 
         # Handle any optional fields TomTom might provide
         if "name" in segment:
             properties["name"] = segment["name"]
 
-        feature = {
-            "type": "Feature",
-            "geometry": geom_dict,
-            "properties": properties
-        }
+        feature = {"type": "Feature", "geometry": geom_dict, "properties": properties}
         geojson_features.append(feature)
 
-    feature_collection = {
-        "type": "FeatureCollection",
-        "features": geojson_features
-    }
+    feature_collection = {"type": "FeatureCollection", "features": geojson_features}
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(feature_collection, f, indent=4)
 
-    print(f"[+] Successfully exported {len(geojson_features)} TomTom segments to '{filepath}'")
+    print(
+        f"[+] Successfully exported {len(geojson_features)} TomTom segments to '{filepath}'"
+    )
 
 
 def plot_tomtom_segments_instantly(traffic_segments: list):
@@ -253,28 +257,9 @@ def plot_tomtom_segments_instantly(traffic_segments: list):
 # =====================================================================
 # CORE EXECUTION PIPELINE
 # =====================================================================
-if __name__ == "__main__":
-    print("[*] Initializing OpenStreetMap environment for Singapore...")
-    osm = OSMService()
-    ox.settings.useful_tags_way.extend(
-        [
-            "maxheight",  # Max vehicle height allowed
-            "maxweight",  # Max vehicle weight allowed
-            "maxwidth",  # Max vehicle width allowed
-            "bridge",  # Indicates if edge is a bridge ('yes' or 'no')
-            "lanes",  # Number of lanes on the roadway
-        ]
-    )
-    graph = ox.graph_from_place("Singapore", network_type="drive")
-    graph = ox.add_edge_speeds(graph)
-    graph = ox.add_edge_travel_times(graph)
+async def main():
 
-    os.makedirs("debug", exist_ok=True)
-    nodes, edges = ox.graph_to_gdfs(graph)
-
-    nodes.to_file("debug/nodes.geojson", driver="GeoJSON")
-    edges.to_file("debug/edges.geojson", driver="GeoJSON")
-
+    world = await bootstrap()
 
     #     # Grab the data dictionary of the first edge
     #     first_edge_data = next()next(iter(graph.edges(data=True)))[2]
@@ -283,14 +268,14 @@ if __name__ == "__main__":
     #     for key, value in first_edge_data.items():
     #         print(f"  {key}: {value}")
 
-#     print("[*] Contacting TomTom Traffic flow stream...")
-#     # Initialize service which locks back-end pulls to Zoom 12
-#     tomtom = TomTomTileService()
-#     graph = tomtom.sync_network_flow(graph)
+    #     print("[*] Contacting TomTom Traffic flow stream...")
+    #     # Initialize service which locks back-end pulls to Zoom 12
+    #     tomtom = TomTomTileService()
+    #     graph = tomtom.sync_network_flow(graph)
 
-    lta_client = LTADataMallClient()
-    lta = LTATrafficService(lta_client)
-    graph = asyncio.run(lta.sync_network_flow_async(graph))
+    await asyncio.gather(
+        graph=asyncio.run(lta.sync_network_flow_async(graph, cache_path)),
+    )
 
     print("[*] Capturing post-sync network data structures...")
     _, updated_edges = ox.graph_to_gdfs(graph)
@@ -298,7 +283,6 @@ if __name__ == "__main__":
     # Export this updated dataframe to file
     updated_edges.to_file("debug/edges_with_traffic.geojson", driver="GeoJSON")
     print("[+] Successfully exported debug/edges_with_traffic.geojson")
-
 
     # =====================================================================
     # DIAGNOSTIC CHECK: VERIFY TRAFFIC PROPAGATION
@@ -335,14 +319,11 @@ if __name__ == "__main__":
     print(f"[>] Edges marked Closed (Blocked):     {closed_edges_count}")
     print("=" * 50 + "\n")
 
-    print("\n[*] Spinning up the visualization dashboard engine...")
-    create_combined_dashboard(graph, zoom_level=12)
-
-    breakpoint()
+    # print("\n[*] Spinning up the visualization dashboard engine...")
+    # create_combined_dashboard(graph, zoom_level=12)
     # =====================================================================
 
     # Wrap inside the state channel dataclass container
-    world = WorldState(graph=graph)
 
     print("[*] Executing LangGraph intelligent optimization nodes...")
     workflow = build_workflow()

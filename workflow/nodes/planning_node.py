@@ -1,6 +1,6 @@
 # workflow/nodes/planning_node.py
 
-from agents.planning_agent import PlanningAgent
+from agents.routing_agent import PlanningAgent
 from langsmith import traceable
 
 agent = PlanningAgent()

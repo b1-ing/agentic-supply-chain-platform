@@ -11,7 +11,8 @@ from models.events import TrafficIncident
 @dataclass
 class WorldState:
     # 1. Non-default arguments MUST go at the very top
-    graph: nx.MultiDiGraph
+    graph: nx.MultiDiGraph = None
+    mapping: Dict = None
 
     # 2. Sequential lists initializing with factories
     traffic_events: list[TrafficIncident] = field(default_factory=list)
@@ -24,6 +25,9 @@ class WorldState:
     constraints: list = field(default_factory=list)
     routes: list = field(default_factory=list)
 
+
     # 3. Primitive fields using the correct type annotation syntax with default values
     recommend_replan: bool = False
     summary: str = ""
+
+

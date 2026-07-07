@@ -80,4 +80,3 @@ class TTLCache:
                 default=_json_default,
             )
         os.replace(tmp, path)
-

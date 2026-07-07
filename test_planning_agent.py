@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # ---- IMPORT YOUR ENTIRE PRODUCTION PIPELINE ----
 from services.lta_service import LTADataMallClient
 from services.traffic_service import TrafficService
-from agents.planning_agent import PlanningAgent
+from agents.routing_agent import PlanningAgent
 from models.assessment import PlanningResult
 
 
