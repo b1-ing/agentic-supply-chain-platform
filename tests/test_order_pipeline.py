@@ -1,6 +1,7 @@
 from copy import deepcopy
 from pprint import pprint
 
+from models import world_state
 from models.order_state import OrderState
 from models.world_state import WorldState
 
@@ -34,11 +35,11 @@ def run_single_test(prompt: str):
     print("#" * 80)
     print(prompt)
 
-    world = WorldState()
+    world_state = WorldState()
 
     state = OrderState(
         raw_order=prompt,
-        world=world,
+        world=world_state,
     )
 
     print_stage("Initial State", state)
@@ -50,38 +51,29 @@ def run_single_test(prompt: str):
     print_stage("After validate_order()", state)
 
     if getattr(state, "valid", True):
-
         state = geocode_order(state)
         print_stage("After geocode_order()", state)
 
-        state = snap_to_graph(state)
-        print_stage("After snap_to_graph()", state)
-
         state = store_order(state)
         print_stage("After store_order()", state)
+
+        return state
 
     else:
         print("\nOrder failed validation. Remaining stages skipped.")
 
 
 if __name__ == "__main__":
-
     test_prompts = [
-
         "Deliver 8 pallets of frozen seafood from Jurong Port to Changi Airport before 3 PM.",
-
         "Transport 500kg of hazardous chemicals from Tuas Port to PSA Pasir Panjang.",
-
         "Move a fragile MRI scanner from NUH to Singapore General Hospital.",
-
         "Deliver 20 pallets of electronics from Changi Airfreight Centre to Woodlands.",
-
         "Pickup furniture at IKEA Alexandra and deliver to Marina Bay Sands tomorrow morning.",
-
-        "Deliver 50 tonnes of steel beams to Sentosa.",
-
-        "Move frozen vaccines from Woodlands to Khoo Teck Puat Hospital before 8am."
+        "Deliver 50 tonnes of steel beams from Depot Rd to Sentosa.",
+        "Move frozen vaccines from Woodlands to Khoo Teck Puat Hospital before 8am.",
     ]
 
     for prompt in test_prompts:
-        run_single_test(prompt)
+        state = run_single_test(prompt)
+        print(state.world)

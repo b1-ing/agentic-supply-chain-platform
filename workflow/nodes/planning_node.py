@@ -1,9 +1,9 @@
 # workflow/nodes/planning_node.py
 
-from agents.routing_agent import PlanningAgent
+from agents.routing_agent import RoutingAgent
 from langsmith import traceable
 
-agent = PlanningAgent()
+agent = RoutingAgent()
 
 
 # Un-comment this whenever you want to see visual traces in your LangSmith dashboard!

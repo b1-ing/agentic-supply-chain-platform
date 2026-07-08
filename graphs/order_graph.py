@@ -16,15 +16,13 @@ def build_order_graph():
     workflow.add_node("validate_order", validate_order)
     workflow.add_node("assess_order", assess_order)
     workflow.add_node("geocode", geocode_order)
-    workflow.add_node("snap_to_graph", snap_to_graph)
     workflow.add_node("store_order", store_order)
 
     workflow.set_entry_point("validate_order")
 
     workflow.add_edge("assess_order", "validate_order")
     workflow.add_edge("validate_order", "geocode")
-    workflow.add_edge("geocode", "snap_to_graph")
-    workflow.add_edge("snap_to_graph", "store_order")
+    workflow.add_edge("geocode", "store_order")
     workflow.add_edge("store_order", END)
 
     return workflow.compile()

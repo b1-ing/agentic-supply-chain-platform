@@ -2,7 +2,9 @@ from pathlib import Path
 from services.lta_service import LTATrafficService, LTADataMallClient
 from models.world_state import WorldState
 import osmnx as ox
-
+import asyncio
+import os
+import json
 
 async def bootstrap():
 
@@ -34,7 +36,9 @@ async def bootstrap():
     lta_client = LTADataMallClient()
     lta = LTATrafficService(lta_client)
     cache_path = "cache/lta_osm_mapping.json"
-    graph = asyncio.run(lta.sync_network_flow_async(graph, cache_path))
+    graph = await lta.sync_network_flow_async(graph, cache_path)
+
+    mapping_cache = {}
     cache_exists = os.path.exists(cache_path)
 
     if cache_exists:

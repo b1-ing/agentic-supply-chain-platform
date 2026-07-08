@@ -4,6 +4,8 @@ import osmnx as ox
 import folium
 import math
 from models.world_state import WorldState
+from routing import matrix_service
+from routing.matrix_service import MatrixService
 from services.osm_service import OSMService
 from services.tomtom_service import TomTomTileService
 from workflow.graph import build_workflow
@@ -273,9 +275,15 @@ async def main():
     #     tomtom = TomTomTileService()
     #     graph = tomtom.sync_network_flow(graph)
 
-    await asyncio.gather(
-        graph=asyncio.run(lta.sync_network_flow_async(graph, cache_path)),
-    )
+    lta_service = LTADataMallClient()
+    lta = LTATrafficService(lta_service)
+
+    graph = await lta.sync_network_flow_async(world.graph, cache_path="cache/lta_osm_mapping.json")
+        # await asyncio.gather(
+
+    # )
+
+    print(graph)
 
     print("[*] Capturing post-sync network data structures...")
     _, updated_edges = ox.graph_to_gdfs(graph)
@@ -325,6 +333,14 @@ async def main():
 
     # Wrap inside the state channel dataclass container
 
+    matrix_service = MatrixService()
+
+    travel_matrix = matrix_service.build(world=world,vehicles=4,orders=world.orders)
+
+    print(travel_matrix)
+
+    breakpoint()
+
     print("[*] Executing LangGraph intelligent optimization nodes...")
     workflow = build_workflow()
     result = workflow.invoke({"world": world})
@@ -353,3 +369,7 @@ async def main():
     # Generate the map using Zoom 12 to synchronize front-end and back-end
     print("\n[*] Spinning up the visualization dashboard engine...")
     create_combined_dashboard(result["world"], zoom_level=12)
+
+
+if __name__== "__main__":
+    asyncio.run(main())

@@ -1,6 +1,6 @@
 def validate_order(state):
 
-    order = state.incoming_order
+    order = state.order
 
     errors = []
 
@@ -16,13 +16,13 @@ def validate_order(state):
     if order.volume_m3 and order.volume_m3 < 0:
         errors.append("Volume cannot be negative.")
 
-    if order.pallets and order.pallets< 0:
+    if order.pallets and order.pallets < 0:
         errors.append("Pallet count cannot be negative.")
 
     if (
-            order.earliest_delivery
-            and order.latest_delivery
-            and order.earliest_delivery > order.latest_delivery
+        order.earliest_delivery
+        and order.latest_delivery
+        and order.earliest_delivery > order.latest_delivery
     ):
         errors.append("Delivery time window is invalid.")
 

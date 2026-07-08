@@ -4,7 +4,6 @@ from datetime import datetime
 
 
 class Order(BaseModel):
-
     order_id: Optional[str] = None
 
     customer_id: Optional[str] = None

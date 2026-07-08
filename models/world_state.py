@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 import networkx as nx
 
 from models.events import TrafficIncident
+from models.incoming_state import IncomingOrder
+
+
 # from models.vehicle import Vehicle
 # from models.mission import Mission
 
@@ -25,9 +28,8 @@ class WorldState:
     constraints: list = field(default_factory=list)
     routes: list = field(default_factory=list)
 
+    orders: list[IncomingOrder] = field(default_factory=list)
 
     # 3. Primitive fields using the correct type annotation syntax with default values
     recommend_replan: bool = False
     summary: str = ""
-
-

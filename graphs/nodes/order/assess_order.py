@@ -51,12 +51,11 @@ Rules:
 
 
 class OrderExtractionAgent:
-
     def __init__(self, use_local: bool = True):
         if use_local:
             print("[*] Configuring RoutingAgent to use local model engine...")
             self.llm_engine = ChatOpenAI(
-                model="gemini-3.5-flash-thinking",  # Matches your local setup
+                model="gemini-3.5-flash",  # Matches your local setup
                 base_url="http://localhost:8081/v1",
                 api_key="sk-your-key",  # Local servers usually require a dummy key
                 temperature=0.0,  # Keep it deterministic for structured analysis
@@ -67,21 +66,14 @@ class OrderExtractionAgent:
         self.llm = self.llm_engine.with_structured_output(IncomingOrder)
 
         self.prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", SYSTEM_PROMPT),
-                ("human", "{order_text}")
-            ]
+            [("system", SYSTEM_PROMPT), ("human", "{order_text}")]
         )
 
     def extract(self, order_text: str) -> Order:
 
         chain = self.prompt | self.llm
 
-        result = chain.invoke(
-            {
-                "order_text": order_text
-            }
-        )
+        result = chain.invoke({"order_text": order_text})
         print(type(result))
         print(result)
 
@@ -96,8 +88,9 @@ class OrderExtractionAgent:
 
 agent = OrderExtractionAgent()
 
+
 def assess_order(state: OrderState):
 
-    state.incoming_order = agent.extract(state.raw_order)
+    state.order = agent.extract(state.raw_order)
 
     return state
