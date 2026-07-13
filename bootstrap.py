@@ -6,6 +6,7 @@ import asyncio
 import os
 import json
 
+
 async def bootstrap():
 
     print("[*] Initializing OpenStreetMap environment for Singapore...")

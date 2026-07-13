@@ -8,11 +8,10 @@ from models.travel_matrix import TravelMatrix
 
 
 class MatrixService:
-
     def build(
-            self,
-            world,
-            locations: list[RoutingLocation],
+        self,
+        world,
+        locations: list[RoutingLocation],
     ) -> TravelMatrix:
         """
         Compute an NxN travel-time matrix over the supplied routing locations.
@@ -23,7 +22,6 @@ class MatrixService:
         matrix = np.full((n, n), np.inf)
 
         for i, source in enumerate(locations):
-
             lengths = nx.single_source_dijkstra_path_length(
                 world.graph,
                 source.graph_node,

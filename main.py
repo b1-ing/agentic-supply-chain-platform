@@ -278,8 +278,10 @@ async def main():
     lta_service = LTADataMallClient()
     lta = LTATrafficService(lta_service)
 
-    graph = await lta.sync_network_flow_async(world.graph, cache_path="cache/lta_osm_mapping.json")
-        # await asyncio.gather(
+    graph = await lta.sync_network_flow_async(
+        world.graph, cache_path="cache/lta_osm_mapping.json"
+    )
+    # await asyncio.gather(
 
     # )
 
@@ -335,7 +337,7 @@ async def main():
 
     matrix_service = MatrixService()
 
-    travel_matrix = matrix_service.build(world=world,vehicles=4,orders=world.orders)
+    travel_matrix = matrix_service.build(world=world, vehicles=4, orders=world.orders)
 
     print(travel_matrix)
 
@@ -371,5 +373,5 @@ async def main():
     create_combined_dashboard(result["world"], zoom_level=12)
 
 
-if __name__== "__main__":
+if __name__ == "__main__":
     asyncio.run(main())

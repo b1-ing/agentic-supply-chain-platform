@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-supply-chain-platform"
+version = "0.1.0"
+
+# Add this section below to handle the flat-layout multi-package setup:
+[tool.setuptools.packages.find]
+include = ["cache*", "debug*", "agents*", "graphs*", "models*", "routing*", "services*", "workflow*", "repository*"]

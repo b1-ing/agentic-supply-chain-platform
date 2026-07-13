@@ -2,11 +2,10 @@ import networkx as nx
 
 
 class RoutingService:
-
     def build(
-            self,
-            world,
-            ordered_nodes,
+        self,
+        world,
+        ordered_nodes,
     ):
 
         complete_path = []
@@ -14,10 +13,9 @@ class RoutingService:
         total_time = 0
 
         for source, target in zip(
-                ordered_nodes[:-1],
-                ordered_nodes[1:],
+            ordered_nodes[:-1],
+            ordered_nodes[1:],
         ):
-
             path = nx.shortest_path(
                 world.graph,
                 source,
