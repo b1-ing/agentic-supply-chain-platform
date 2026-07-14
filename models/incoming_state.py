@@ -27,6 +27,10 @@ class IncomingOrder(BaseModel):
         default=None, description="longitude of the delivery location"
     )
 
+    pickup_node: Optional[int] = None
+
+    delivery_node: Optional[int] = None
+
     weight_kg: Optional[float] = Field(default=None, description="Weight in kilograms.")
 
     volume_m3: Optional[float] = Field(

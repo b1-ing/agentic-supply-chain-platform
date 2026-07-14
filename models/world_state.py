@@ -7,13 +7,15 @@ from models.events import TrafficIncident
 from models.incoming_state import IncomingOrder
 
 
-# from models.vehicle import Vehicle
+from models.vehicles.vehicle import Vehicle
 # from models.mission import Mission
 
 
 @dataclass
 class WorldState:
     # 1. Non-default arguments MUST go at the very top
+    depots: list[Depot]
+    
     graph: nx.MultiDiGraph = None
     mapping: Dict = None
 
@@ -21,7 +23,7 @@ class WorldState:
     traffic_events: list[TrafficIncident] = field(default_factory=list)
     matched_events: list = field(default_factory=list)
 
-    # vehicles: list[Vehicle] = field(default_factory=list)
+    vehicles: list[Vehicle] = field(default_factory=list)
     # missions: list[Mission] = field(default_factory=list)
 
     assessments: list = field(default_factory=list)

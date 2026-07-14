@@ -1,0 +1,357 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1783993218.5152788,
+    "ast_hash": "80439cab1601a5647021755934f6703b",
+    "semantic_hash": "80439cab1601a5647021755934f6703b"
+  },
+  "agents/planning_agent.py": {
+    "mtime": 1783993218.543503,
+    "ast_hash": "6c3f3f9e32c6d3f09f9b05615330ac8f",
+    "semantic_hash": "6c3f3f9e32c6d3f09f9b05615330ac8f"
+  },
+  "agents/routing_agent.py": {
+    "mtime": 1783405856.430284,
+    "ast_hash": "5428529f82df13b0cd8af5010d88f3e5",
+    "semantic_hash": "5428529f82df13b0cd8af5010d88f3e5"
+  },
+  "agents/traffic_agent.py": {
+    "mtime": 1783405080.7993798,
+    "ast_hash": "b6c3f84c7a1a4ab65cf7acdcefe2707b",
+    "semantic_hash": "b6c3f84c7a1a4ab65cf7acdcefe2707b"
+  },
+  "bootstrap.py": {
+    "mtime": 1783993218.547915,
+    "ast_hash": "4f481a2ef2a7c18ff41aa34445dc5241",
+    "semantic_hash": "4f481a2ef2a7c18ff41aa34445dc5241"
+  },
+  "graphs/nodes/order/assess_order.py": {
+    "mtime": 1783492587.3260722,
+    "ast_hash": "b0ce721e093c8cabd20ca25f4c1cd1a5",
+    "semantic_hash": "b0ce721e093c8cabd20ca25f4c1cd1a5"
+  },
+  "graphs/nodes/order/geocode.py": {
+    "mtime": 1783492587.3260722,
+    "ast_hash": "e310854498e85b9b6bf4883709f557ac",
+    "semantic_hash": "e310854498e85b9b6bf4883709f557ac"
+  },
+  "graphs/nodes/order/snap_to_graph.py": {
+    "mtime": 1783492587.3260722,
+    "ast_hash": "14ef05c87b5f107441fd6826506ff039",
+    "semantic_hash": "14ef05c87b5f107441fd6826506ff039"
+  },
+  "graphs/nodes/order/store_order.py": {
+    "mtime": 1783492587.3240726,
+    "ast_hash": "7cc1d5786565ab9465a5573a9293898d",
+    "semantic_hash": "7cc1d5786565ab9465a5573a9293898d"
+  },
+  "graphs/nodes/order/validate_order.py": {
+    "mtime": 1783492587.3260722,
+    "ast_hash": "40a90f6187a39d9652ed4ef021583bb9",
+    "semantic_hash": "40a90f6187a39d9652ed4ef021583bb9"
+  },
+  "graphs/order_graph.py": {
+    "mtime": 1783477577.7408543,
+    "ast_hash": "90afd8a69192094d5966c0d0627ba47c",
+    "semantic_hash": "90afd8a69192094d5966c0d0627ba47c"
+  },
+  "graphs/planning_graph.py": {
+    "mtime": 1783408370.7804723,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "main.py": {
+    "mtime": 1783993218.9528258,
+    "ast_hash": "97524fd77fe8a66739deac9d61dcbc93",
+    "semantic_hash": "97524fd77fe8a66739deac9d61dcbc93"
+  },
+  "models/assessment.py": {
+    "mtime": 1782870754.4250698,
+    "ast_hash": "99b60dae232e12f3a505d3b1fcf00208",
+    "semantic_hash": "99b60dae232e12f3a505d3b1fcf00208"
+  },
+  "models/constraint.py": {
+    "mtime": 1782791321.4443634,
+    "ast_hash": "ac0504e5f4f11ec91823f8a8db92abeb",
+    "semantic_hash": "ac0504e5f4f11ec91823f8a8db92abeb"
+  },
+  "models/constraint_engine.py": {
+    "mtime": 1782791321.4443634,
+    "ast_hash": "a63cd7bd23db7e14d0415ba439526693",
+    "semantic_hash": "a63cd7bd23db7e14d0415ba439526693"
+  },
+  "models/events.py": {
+    "mtime": 1782800234.2123463,
+    "ast_hash": "9c5033882769d11ddb0ced8add16b4ed",
+    "semantic_hash": "9c5033882769d11ddb0ced8add16b4ed"
+  },
+  "models/incoming_state.py": {
+    "mtime": 1783492587.3250723,
+    "ast_hash": "8d1d7354469cc57259f216886cc1d4f6",
+    "semantic_hash": "8d1d7354469cc57259f216886cc1d4f6"
+  },
+  "models/order.py": {
+    "mtime": 1783492587.3260722,
+    "ast_hash": "b16ef39ddec4e1e39c1f2ce7a0237ce0",
+    "semantic_hash": "b16ef39ddec4e1e39c1f2ce7a0237ce0"
+  },
+  "models/order_state.py": {
+    "mtime": 1783492587.3250723,
+    "ast_hash": "8eccf691ff8710697e4754fe1e62dd58",
+    "semantic_hash": "8eccf691ff8710697e4754fe1e62dd58"
+  },
+  "models/routing_location.py": {
+    "mtime": 1783993218.9836793,
+    "ast_hash": "6290d2d46998fddf5d3c716f29ab6c93",
+    "semantic_hash": "6290d2d46998fddf5d3c716f29ab6c93"
+  },
+  "models/travel_matrix.py": {
+    "mtime": 1783993218.9876876,
+    "ast_hash": "277323ad95aa08f130bfe2fcda8d31d6",
+    "semantic_hash": "277323ad95aa08f130bfe2fcda8d31d6"
+  },
+  "models/vehicle.py": {
+    "mtime": 1783492587.3250723,
+    "ast_hash": "6e61e205191b74c976b9e7ee26aac15f",
+    "semantic_hash": "6e61e205191b74c976b9e7ee26aac15f"
+  },
+  "models/vehicle_types/hazmat_truck.py": {
+    "mtime": 1783492587.3260722,
+    "ast_hash": "1cebb7276155f4b6e714e460afd95b64",
+    "semantic_hash": "1cebb7276155f4b6e714e460afd95b64"
+  },
+  "models/vehicle_types/refrigerated_truck.py": {
+    "mtime": 1783492587.3250723,
+    "ast_hash": "a0beb1b78d37f6b8685f6a94fb3d525d",
+    "semantic_hash": "a0beb1b78d37f6b8685f6a94fb3d525d"
+  },
+  "models/vehicle_types/standard_truck.py": {
+    "mtime": 1783492587.3270893,
+    "ast_hash": "94abf5b489264a0aec3895c5bb768283",
+    "semantic_hash": "94abf5b489264a0aec3895c5bb768283"
+  },
+  "models/vehicle_types/tall_truck.py": {
+    "mtime": 1783492587.3240726,
+    "ast_hash": "238d6884743f775a0f22b9fbc680ee6e",
+    "semantic_hash": "238d6884743f775a0f22b9fbc680ee6e"
+  },
+  "models/world_state.py": {
+    "mtime": 1783492587.3260722,
+    "ast_hash": "6ee1d713e409f092c60b74325fa0e209",
+    "semantic_hash": "6ee1d713e409f092c60b74325fa0e209"
+  },
+  "pyproject.toml": {
+    "mtime": 1783993218.996801,
+    "ast_hash": "eb3afb6c675bc8f16d034f14e798570a",
+    "semantic_hash": "eb3afb6c675bc8f16d034f14e798570a"
+  },
+  "repository/constraint_repository.py": {
+    "mtime": 1782791321.4433627,
+    "ast_hash": "1490828dc9ddc61ed657737c1d89170c",
+    "semantic_hash": "1490828dc9ddc61ed657737c1d89170c"
+  },
+  "routing/matrix_service.py": {
+    "mtime": 1783993219.010404,
+    "ast_hash": "65e3b5c673bed8e7a6700365e8aeb5d6",
+    "semantic_hash": "65e3b5c673bed8e7a6700365e8aeb5d6"
+  },
+  "routing/or_tools_solver.py": {
+    "mtime": 1783993219.0146904,
+    "ast_hash": "cfebc2fc5451b525d7cfa27ea3cf46a6",
+    "semantic_hash": "cfebc2fc5451b525d7cfa27ea3cf46a6"
+  },
+  "routing/routing_service.py": {
+    "mtime": 1783993219.023041,
+    "ast_hash": "3f25fcc9bb7c33109bbf99946568814e",
+    "semantic_hash": "3f25fcc9bb7c33109bbf99946568814e"
+  },
+  "services/cache.py": {
+    "mtime": 1783405080.8008342,
+    "ast_hash": "430410cc933ad6efed093040860d6802",
+    "semantic_hash": "430410cc933ad6efed093040860d6802"
+  },
+  "services/context_builder.py": {
+    "mtime": 1782804685.4602234,
+    "ast_hash": "a2cf67116dbe37fb6cb3300e5572fb5b",
+    "semantic_hash": "a2cf67116dbe37fb6cb3300e5572fb5b"
+  },
+  "services/geocode_service.py": {
+    "mtime": 1783492587.3240726,
+    "ast_hash": "bdfb10d975ddd594141c7dcc8285a274",
+    "semantic_hash": "bdfb10d975ddd594141c7dcc8285a274"
+  },
+  "services/lta_service.py": {
+    "mtime": 1783405080.8018396,
+    "ast_hash": "a9090fa2fa8448352fb8a8d857a80839",
+    "semantic_hash": "a9090fa2fa8448352fb8a8d857a80839"
+  },
+  "services/osm_service.py": {
+    "mtime": 1782791321.4433627,
+    "ast_hash": "829ae85227e418c7e6169b0051611f5b",
+    "semantic_hash": "829ae85227e418c7e6169b0051611f5b"
+  },
+  "services/road_matcher.py": {
+    "mtime": 1782791321.4443634,
+    "ast_hash": "9a915f61fe57024e24f015440f2cdbf5",
+    "semantic_hash": "9a915f61fe57024e24f015440f2cdbf5"
+  },
+  "services/test_lta_raw.py": {
+    "mtime": 1782791321.4443634,
+    "ast_hash": "5820bbae8f79978f46f62b3e83b104e7",
+    "semantic_hash": "5820bbae8f79978f46f62b3e83b104e7"
+  },
+  "services/test_nea_service.py": {
+    "mtime": 1782791321.4443634,
+    "ast_hash": "4772f64e77d1c5b213507606fe68394b",
+    "semantic_hash": "4772f64e77d1c5b213507606fe68394b"
+  },
+  "services/test_osm.py": {
+    "mtime": 1782803928.3474362,
+    "ast_hash": "36e39cbff9dd0cc48660531b3a477199",
+    "semantic_hash": "36e39cbff9dd0cc48660531b3a477199"
+  },
+  "services/tomtom_service.py": {
+    "mtime": 1783405080.8018396,
+    "ast_hash": "def7d25bb144543962b8e0c54f1277bb",
+    "semantic_hash": "def7d25bb144543962b8e0c54f1277bb"
+  },
+  "services/traffic_service.py": {
+    "mtime": 1782792456.151417,
+    "ast_hash": "a7b6db07ad8e520314bf44dcdd8d2e17",
+    "semantic_hash": "a7b6db07ad8e520314bf44dcdd8d2e17"
+  },
+  "services/weather_service.py": {
+    "mtime": 1782791321.4443634,
+    "ast_hash": "8f65241eb93cdcef5fc4cf403957d005",
+    "semantic_hash": "8f65241eb93cdcef5fc4cf403957d005"
+  },
+  "tests/run_matrix_demo.py": {
+    "mtime": 1783993219.0415769,
+    "ast_hash": "9c75273caa5bbf56fec396bd344f0cc7",
+    "semantic_hash": "9c75273caa5bbf56fec396bd344f0cc7"
+  },
+  "tests/test_matrix_service.py": {
+    "mtime": 1783993219.0554793,
+    "ast_hash": "64c67d7a2c08de7dd10b05b93f847fe8",
+    "semantic_hash": "64c67d7a2c08de7dd10b05b93f847fe8"
+  },
+  "tests/test_order_pipeline.py": {
+    "mtime": 1783492587.3250723,
+    "ast_hash": "684c4bcfd615df6712dfa8ad34716129",
+    "semantic_hash": "684c4bcfd615df6712dfa8ad34716129"
+  },
+  "tests/test_ortools_solver.py": {
+    "mtime": 1783993219.0611281,
+    "ast_hash": "da7d4ebece5fa16a32995ef77af15926",
+    "semantic_hash": "da7d4ebece5fa16a32995ef77af15926"
+  },
+  "utils/matrix_generator.py": {
+    "mtime": 1783387546.4668171,
+    "ast_hash": "219e5a4f2d2fd4381720c457f107b9d0",
+    "semantic_hash": "219e5a4f2d2fd4381720c457f107b9d0"
+  },
+  "visualise_map.py": {
+    "mtime": 1782803928.3464367,
+    "ast_hash": "2ecca65825f05c8ad712779f383fc422",
+    "semantic_hash": "2ecca65825f05c8ad712779f383fc422"
+  },
+  "workflow/graph.py": {
+    "mtime": 1783387546.4688952,
+    "ast_hash": "066e1ae3fd3b520071f981f7ddb31ae8",
+    "semantic_hash": "066e1ae3fd3b520071f981f7ddb31ae8"
+  },
+  "workflow/nodes/constraint_node.py": {
+    "mtime": 1783387546.4794347,
+    "ast_hash": "111f14fb307bca33d28923892638b0d9",
+    "semantic_hash": "111f14fb307bca33d28923892638b0d9"
+  },
+  "workflow/nodes/context_node.py": {
+    "mtime": 1782808230.2178752,
+    "ast_hash": "e2dee980def0bc2ca43928a504cdb0cf",
+    "semantic_hash": "e2dee980def0bc2ca43928a504cdb0cf"
+  },
+  "workflow/nodes/fetch_node.py": {
+    "mtime": 1783387546.4799552,
+    "ast_hash": "877e3f674c056aad0ba3bf16376db8e9",
+    "semantic_hash": "877e3f674c056aad0ba3bf16376db8e9"
+  },
+  "workflow/nodes/graph_node.py": {
+    "mtime": 1783387546.4825945,
+    "ast_hash": "129310209ddc82f444707b9542e33209",
+    "semantic_hash": "129310209ddc82f444707b9542e33209"
+  },
+  "workflow/nodes/match_node.py": {
+    "mtime": 1782812096.389038,
+    "ast_hash": "048d976ca84df8944e438b499e6e01b6",
+    "semantic_hash": "048d976ca84df8944e438b499e6e01b6"
+  },
+  "workflow/nodes/planning_node.py": {
+    "mtime": 1783494336.1061294,
+    "ast_hash": "fbf8dc7de633ef8940f562050f145929",
+    "semantic_hash": "fbf8dc7de633ef8940f562050f145929"
+  },
+  "workflow/routing_workflow.py": {
+    "mtime": 1782792383.8875613,
+    "ast_hash": "1b6203768767da069c3b949649a590b4",
+    "semantic_hash": "1b6203768767da069c3b949649a590b4"
+  },
+  "workflow/state.py": {
+    "mtime": 1782808004.1137574,
+    "ast_hash": "e24448d72340907c3ef744879a1ce95c",
+    "semantic_hash": "e24448d72340907c3ef744879a1ce95c"
+  },
+  "models/route_plan.py": {
+    "mtime": 1783993218.97382,
+    "ast_hash": "de96d28452f62742267941ab48579ecf",
+    "semantic_hash": "de96d28452f62742267941ab48579ecf"
+  },
+  "models/route_segment.py": {
+    "mtime": 1783993218.9778333,
+    "ast_hash": "e9db21ad2149cfe1c06a30a15aa9424e",
+    "semantic_hash": "e9db21ad2149cfe1c06a30a15aa9424e"
+  },
+  "models/route_stop.py": {
+    "mtime": 1783993218.9797776,
+    "ast_hash": "47276b3d5f99327bb717c2f5b90d8c36",
+    "semantic_hash": "47276b3d5f99327bb717c2f5b90d8c36"
+  },
+  "models/vehicle_route.py": {
+    "mtime": 1783993218.9929495,
+    "ast_hash": "6698f38d846a54cf1155553e03490415",
+    "semantic_hash": "6698f38d846a54cf1155553e03490415"
+  },
+  "routing/route_builder.py": {
+    "mtime": 1783993219.0191793,
+    "ast_hash": "238c88634572665b4c422a60f635b502",
+    "semantic_hash": "238c88634572665b4c422a60f635b502"
+  },
+  "tests/debug_tomtom_tile.py": {
+    "mtime": 1783993219.0368476,
+    "ast_hash": "029ffb55d56b6a8dc7f6bdadd03e747a",
+    "semantic_hash": "029ffb55d56b6a8dc7f6bdadd03e747a"
+  },
+  "tests/test_lta_live.py": {
+    "mtime": 1783993219.0507064,
+    "ast_hash": "fd26893b0087bd493f76134dee1829c8",
+    "semantic_hash": "fd26893b0087bd493f76134dee1829c8"
+  },
+  "tests/test_planning_agent.py": {
+    "mtime": 1783993219.0673275,
+    "ast_hash": "8facff68aca607ac88083692b5b5292c",
+    "semantic_hash": "8facff68aca607ac88083692b5b5292c"
+  },
+  "tests/test_road_matcher.py": {
+    "mtime": 1783993219.0721798,
+    "ast_hash": "0016f9f08bb9d2df0efcb6c1668219cd",
+    "semantic_hash": "0016f9f08bb9d2df0efcb6c1668219cd"
+  },
+  "tests/test_show_incidents.py": {
+    "mtime": 1783993219.075943,
+    "ast_hash": "103d3214d65c8e6973659c86a293ff4f",
+    "semantic_hash": "103d3214d65c8e6973659c86a293ff4f"
+  },
+  "tests/test_tomtom_api_key.py": {
+    "mtime": 1783993219.0809631,
+    "ast_hash": "7f6c8d0b3b9c24aaa03ec5227f7887a5",
+    "semantic_hash": "7f6c8d0b3b9c24aaa03ec5227f7887a5"
+  }
+}

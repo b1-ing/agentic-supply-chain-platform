@@ -5,7 +5,7 @@ from workflow.state import WorkflowState
 from workflow.nodes.fetch_node import fetch_node
 from workflow.nodes.match_node import match_node
 from workflow.nodes.context_node import context_node
-from workflow.nodes.planning_node import planning_node
+from workflow.nodes.routing_assessment_node import planning_node
 from workflow.nodes.constraint_node import constraint_node
 from workflow.nodes.graph_node import graph_node
 

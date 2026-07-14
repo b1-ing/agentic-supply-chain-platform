@@ -1,60 +1,12 @@
 {
   "communities": {
     "0": [
-      "agents_traffic_agent",
-      "agents_traffic_agent_trafficagent",
-      "agents_traffic_agent_trafficagent_init",
-      "agents_traffic_agent_trafficagent_run",
-      "agents_traffic_agent_trafficagent_sync_traffic",
-      "bootstrap",
-      "bootstrap_bootstrap",
-      "main",
-      "main_create_combined_dashboard",
-      "main_draw_tile_grid",
-      "main_main",
-      "main_plot_tomtom_segments_instantly",
-      "main_rationale_115",
-      "main_rationale_189",
-      "main_rationale_22",
-      "main_rationale_236",
-      "main_rationale_57",
-      "main_save_tomtom_segments_to_geojson",
-      "main_solve_cvrp",
-      "ndarray",
-      "services_lta_service",
-      "services_lta_service_ltadatamallclient",
-      "services_lta_service_ltadatamallclient_export_lta_segments",
-      "services_lta_service_ltadatamallclient_fetch_all_pages",
-      "services_lta_service_ltadatamallclient_fetch_all_pages_async",
-      "services_lta_service_ltadatamallclient_init",
-      "services_lta_service_ltatrafficservice",
-      "services_lta_service_ltatrafficservice_calculate_bearing",
-      "services_lta_service_ltatrafficservice_fetch_macro_travel_times",
-      "services_lta_service_ltatrafficservice_init",
-      "services_lta_service_ltatrafficservice_is_same_direction",
-      "services_lta_service_ltatrafficservice_sync_network_flow_async",
-      "services_lta_service_py_any",
-      "services_lta_service_py_multidigraph",
-      "services_lta_service_rationale_115",
-      "services_lta_service_rationale_173",
-      "services_lta_service_rationale_182",
-      "services_lta_service_rationale_192",
-      "services_lta_service_rationale_332",
-      "services_lta_service_rationale_71",
-      "test_lta_live",
-      "test_lta_live_test_live_connection",
-      "test_show_incidents",
-      "test_show_incidents_showcase_incident_objects",
-      "utils_matrix_generator",
-      "utils_matrix_generator_generate_cvrp_time_matrix",
-      "utils_matrix_generator_py_multidigraph",
-      "utils_matrix_generator_rationale_11"
-    ],
-    "1": [
+      "agents_planning_agent",
+      "agents_planning_agent_planningagent",
       "agents_planning_agent_planningagent_init",
+      "agents_planning_agent_planningagent_run",
       "graph",
       "models_routing_location",
-      "models_routing_location_rationale_9",
       "models_routing_location_routinglocation",
       "models_travel_matrix",
       "models_travel_matrix_rationale_12",
@@ -67,7 +19,7 @@
       "routing_or_tools_solver_ortoolssolver",
       "routing_or_tools_solver_ortoolssolver_extract_routes",
       "routing_or_tools_solver_ortoolssolver_solve",
-      "routing_or_tools_solver_rationale_139",
+      "routing_or_tools_solver_rationale_146",
       "routing_or_tools_solver_rationale_16",
       "tests_run_matrix_demo",
       "tests_run_matrix_demo_load_or_download_singapore_graph",
@@ -85,8 +37,10 @@
       "tests_test_matrix_service_rationale_55",
       "tests_test_matrix_service_rationale_75",
       "tests_test_matrix_service_rationale_85",
+      "tests_test_matrix_service_rationale_92",
       "tests_test_matrix_service_test_matrix_service_build_dimensions",
       "tests_test_matrix_service_test_matrix_service_empty_locations",
+      "tests_test_matrix_service_test_matrix_service_locations_contents",
       "tests_test_matrix_service_test_matrix_service_shortest_paths",
       "tests_test_matrix_service_test_matrix_service_unreachable_nodes",
       "tests_test_ortools_solver",
@@ -96,35 +50,28 @@
       "tests_test_ortools_solver_dummyvehicle_init",
       "tests_test_ortools_solver_test_solver"
     ],
-    "2": [
-      "models_constraint_engine",
-      "models_constraint_engine_constraintengine",
-      "models_constraint_engine_constraintengine_init",
+    "1": [
+      "agents_traffic_agent",
+      "agents_traffic_agent_trafficagent",
+      "agents_traffic_agent_trafficagent_init",
+      "agents_traffic_agent_trafficagent_run",
+      "agents_traffic_agent_trafficagent_sync_traffic",
       "models_events",
       "models_events_event",
       "models_events_roadspeedobservation",
       "models_events_trafficincident",
-      "repository_constraint_repository",
-      "repository_constraint_repository_constraintrepository",
-      "repository_constraint_repository_constraintrepository_add",
-      "repository_constraint_repository_constraintrepository_add_many",
-      "repository_constraint_repository_constraintrepository_clear",
-      "repository_constraint_repository_constraintrepository_get_all",
-      "repository_constraint_repository_constraintrepository_init",
       "services_context_builder",
       "services_context_builder_contextbuilder",
       "services_context_builder_contextbuilder_build",
-      "services_osm_service",
-      "services_osm_service_osmservice",
-      "services_osm_service_osmservice_load_graph",
-      "services_road_matcher",
-      "services_road_matcher_rationale_18",
-      "services_road_matcher_roadmatcher",
-      "services_road_matcher_roadmatcher_init",
-      "services_road_matcher_roadmatcher_nearby_edges",
-      "services_road_matcher_roadmatcher_nearest_edge",
-      "services_test_osm",
-      "services_test_osm_test_graph_loading",
+      "services_lta_service",
+      "services_lta_service_ltadatamallclient",
+      "services_lta_service_ltadatamallclient_export_lta_segments",
+      "services_lta_service_ltadatamallclient_fetch_all_pages",
+      "services_lta_service_ltadatamallclient_fetch_all_pages_async",
+      "services_lta_service_ltadatamallclient_init",
+      "services_lta_service_py_any",
+      "services_lta_service_rationale_115",
+      "services_lta_service_rationale_71",
       "services_traffic_service",
       "services_traffic_service_rationale_12",
       "services_traffic_service_rationale_22",
@@ -133,14 +80,18 @@
       "services_traffic_service_trafficservice_fetch_live_incidents",
       "services_traffic_service_trafficservice_fetch_speed_bands",
       "services_traffic_service_trafficservice_init",
-      "test_road_matcher",
-      "test_road_matcher_run_integration_test",
-      "workflow_routing_workflow",
-      "workflow_routing_workflow_routingworkflow",
-      "workflow_routing_workflow_routingworkflow_build_constraints",
-      "workflow_routing_workflow_routingworkflow_init"
+      "tests_test_lta_live",
+      "tests_test_lta_live_test_live_connection",
+      "tests_test_planning_agent",
+      "tests_test_planning_agent_run_live_traffic_agent_test",
+      "tests_test_road_matcher",
+      "tests_test_road_matcher_run_integration_test",
+      "tests_test_show_incidents",
+      "tests_test_show_incidents_showcase_incident_objects",
+      "workflow_nodes_fetch_node",
+      "workflow_nodes_fetch_node_fetch_node"
     ],
-    "3": [
+    "2": [
       "graphs_nodes_order_assess_order",
       "graphs_nodes_order_assess_order_assess_order",
       "graphs_nodes_order_assess_order_orderextractionagent",
@@ -175,15 +126,41 @@
       "services_geocode_service_rationale_20",
       "tests_test_order_pipeline",
       "tests_test_order_pipeline_print_stage",
-      "tests_test_order_pipeline_run_single_test",
-      "typeddict",
-      "workflow_state",
-      "workflow_state_workflowstate"
+      "tests_test_order_pipeline_run_single_test"
+    ],
+    "3": [
+      "bootstrap",
+      "bootstrap_bootstrap",
+      "main",
+      "main_create_combined_dashboard",
+      "main_draw_tile_grid",
+      "main_main",
+      "main_plot_tomtom_segments_instantly",
+      "main_rationale_115",
+      "main_rationale_189",
+      "main_rationale_22",
+      "main_rationale_236",
+      "main_rationale_57",
+      "main_save_tomtom_segments_to_geojson",
+      "main_solve_cvrp",
+      "ndarray",
+      "services_lta_service_ltatrafficservice",
+      "services_lta_service_ltatrafficservice_calculate_bearing",
+      "services_lta_service_ltatrafficservice_fetch_macro_travel_times",
+      "services_lta_service_ltatrafficservice_init",
+      "services_lta_service_ltatrafficservice_is_same_direction",
+      "services_lta_service_ltatrafficservice_sync_network_flow_async",
+      "services_lta_service_py_multidigraph",
+      "services_lta_service_rationale_173",
+      "services_lta_service_rationale_182",
+      "services_lta_service_rationale_192",
+      "services_lta_service_rationale_332",
+      "utils_matrix_generator",
+      "utils_matrix_generator_generate_cvrp_time_matrix",
+      "utils_matrix_generator_py_multidigraph",
+      "utils_matrix_generator_rationale_11"
     ],
     "4": [
-      "debug_tomtom_tile",
-      "debug_tomtom_tile_main",
-      "debug_tomtom_tile_rationale_1",
       "path",
       "services_cache",
       "services_cache_json_default",
@@ -210,30 +187,62 @@
       "services_tomtom_service_tomtomtileservice_init",
       "services_tomtom_service_tomtomtileservice_lat_lon_to_tile_xyz",
       "services_tomtom_service_tomtomtileservice_sync_network_flow",
-      "services_tomtom_service_tomtomtileservice_tile_pixel_to_lng_lat"
+      "services_tomtom_service_tomtomtileservice_tile_pixel_to_lng_lat",
+      "tests_debug_tomtom_tile",
+      "tests_debug_tomtom_tile_main",
+      "tests_debug_tomtom_tile_rationale_1"
     ],
     "5": [
-      "agents_planning_agent",
-      "agents_planning_agent_planningagent",
-      "agents_planning_agent_planningagent_run",
-      "agents_routing_agent",
-      "agents_routing_agent_rationale_55",
-      "agents_routing_agent_routingagent",
-      "agents_routing_agent_routingagent_evaluate",
-      "agents_routing_agent_routingagent_init",
-      "models_assessment",
-      "models_assessment_incidentassessment",
-      "models_assessment_planningresult",
-      "models_assessment_py_basemodel",
-      "models_assessment_py_enum",
-      "models_assessment_py_str",
-      "models_assessment_roadstatus",
-      "models_assessment_severity",
-      "test_planning_agent",
-      "test_planning_agent_run_live_traffic_agent_test",
-      "workflow_nodes_planning_node"
+      "models_constraint",
+      "models_constraint_constraintaction",
+      "models_constraint_engine",
+      "models_constraint_engine_constraintengine",
+      "models_constraint_engine_constraintengine_init",
+      "models_constraint_engine_constraintengine_process_event",
+      "models_constraint_py_enum",
+      "models_constraint_routingconstraint",
+      "repository_constraint_repository",
+      "repository_constraint_repository_constraintrepository",
+      "repository_constraint_repository_constraintrepository_add",
+      "repository_constraint_repository_constraintrepository_add_many",
+      "repository_constraint_repository_constraintrepository_clear",
+      "repository_constraint_repository_constraintrepository_get_all",
+      "repository_constraint_repository_constraintrepository_init",
+      "services_osm_service",
+      "services_osm_service_osmservice",
+      "services_osm_service_osmservice_load_graph",
+      "services_test_osm",
+      "services_test_osm_test_graph_loading",
+      "workflow_routing_workflow",
+      "workflow_routing_workflow_routingworkflow",
+      "workflow_routing_workflow_routingworkflow_build_constraints",
+      "workflow_routing_workflow_routingworkflow_init"
     ],
     "6": [
+      "services_road_matcher",
+      "services_road_matcher_rationale_18",
+      "services_road_matcher_roadmatcher",
+      "services_road_matcher_roadmatcher_init",
+      "services_road_matcher_roadmatcher_nearby_edges",
+      "services_road_matcher_roadmatcher_nearest_edge",
+      "typeddict",
+      "workflow_graph",
+      "workflow_graph_build_workflow",
+      "workflow_nodes_constraint_node",
+      "workflow_nodes_constraint_node_constraint_node",
+      "workflow_nodes_context_node",
+      "workflow_nodes_context_node_context_node",
+      "workflow_nodes_graph_node",
+      "workflow_nodes_graph_node_graph_node",
+      "workflow_nodes_graph_node_graphbuilder",
+      "workflow_nodes_graph_node_graphbuilder_apply_constraints",
+      "workflow_nodes_match_node",
+      "workflow_nodes_match_node_match_node",
+      "workflow_nodes_planning_node_planning_node",
+      "workflow_state",
+      "workflow_state_workflowstate"
+    ],
+    "7": [
       "abc",
       "models_vehicle",
       "models_vehicle_py_basemodel",
@@ -250,24 +259,40 @@
       "models_vehicle_vehicle",
       "models_vehicle_vehiclestatus"
     ],
-    "7": [
-      "workflow_graph",
-      "workflow_graph_build_workflow",
-      "workflow_nodes_constraint_node",
-      "workflow_nodes_constraint_node_constraint_node",
-      "workflow_nodes_context_node",
-      "workflow_nodes_context_node_context_node",
-      "workflow_nodes_fetch_node",
-      "workflow_nodes_fetch_node_fetch_node",
-      "workflow_nodes_graph_node",
-      "workflow_nodes_graph_node_graph_node",
-      "workflow_nodes_graph_node_graphbuilder",
-      "workflow_nodes_graph_node_graphbuilder_apply_constraints",
-      "workflow_nodes_match_node",
-      "workflow_nodes_match_node_match_node",
-      "workflow_nodes_planning_node_planning_node"
-    ],
     "8": [
+      "models_route_plan",
+      "models_route_plan_routeplan",
+      "models_route_segment",
+      "models_route_segment_routesegment",
+      "models_route_stop",
+      "models_route_stop_routestop",
+      "models_vehicle_route",
+      "models_vehicle_route_vehicleroute",
+      "routing_route_builder",
+      "routing_route_builder_routebuilder",
+      "routing_route_builder_routebuilder_build",
+      "routing_route_builder_routebuilder_build_segments",
+      "routing_route_builder_routebuilder_build_stops",
+      "travelmatrix",
+      "vehicle"
+    ],
+    "9": [
+      "agents_routing_agent",
+      "agents_routing_agent_rationale_55",
+      "agents_routing_agent_routingagent",
+      "agents_routing_agent_routingagent_evaluate",
+      "agents_routing_agent_routingagent_init",
+      "models_assessment",
+      "models_assessment_incidentassessment",
+      "models_assessment_planningresult",
+      "models_assessment_py_basemodel",
+      "models_assessment_py_enum",
+      "models_assessment_py_str",
+      "models_assessment_roadstatus",
+      "models_assessment_severity",
+      "workflow_nodes_planning_node"
+    ],
+    "10": [
       "services_test_nea_service",
       "services_test_nea_service_test_weather_pipeline",
       "services_weather_service",
@@ -280,32 +305,22 @@
       "services_weather_service_weatherservice_fetch_metadata",
       "services_weather_service_weatherservice_init"
     ],
-    "9": [
-      "models_constraint",
-      "models_constraint_constraintaction",
-      "models_constraint_engine_constraintengine_process_event",
-      "models_constraint_py_enum",
-      "models_constraint_routingconstraint"
-    ],
-    "10": [
+    "11": [
       "routing_routing_service",
       "routing_routing_service_routingservice",
       "routing_routing_service_routingservice_build"
     ],
-    "11": [
+    "12": [
       "services_test_lta_raw",
       "services_test_lta_raw_test_static_roadworks"
     ],
-    "12": [
-      "test_tomtom_api_key",
-      "test_tomtom_api_key_test_tomtom_api_key"
-    ],
     "13": [
-      "visualise_map",
-      "visualise_map_create_interactive_map"
+      "tests_test_tomtom_api_key",
+      "tests_test_tomtom_api_key_test_tomtom_api_key"
     ],
     "14": [
-      "config"
+      "visualise_map",
+      "visualise_map_create_interactive_map"
     ],
     "15": [
       "graphs_planning_graph"
@@ -315,18 +330,18 @@
     ]
   },
   "cohesion": {
-    "0": 0.07180851063829788,
-    "1": 0.08773784355179703,
-    "2": 0.08362369337979095,
-    "3": 0.12233285917496443,
-    "4": 0.1103448275862069,
-    "5": 0.1695906432748538,
-    "6": 0.22857142857142856,
-    "7": 0.2571428571428571,
-    "8": 0.23636363636363636,
-    "9": 0.5,
-    "10": 0.6666666666666666,
-    "11": 1.0,
+    "0": 0.07712765957446809,
+    "1": 0.08906882591093117,
+    "2": 0.1361344537815126,
+    "3": 0.09425287356321839,
+    "4": 0.10574712643678161,
+    "5": 0.11594202898550725,
+    "6": 0.16017316017316016,
+    "7": 0.22857142857142856,
+    "8": 0.22857142857142856,
+    "9": 0.24175824175824176,
+    "10": 0.23636363636363636,
+    "11": 0.6666666666666666,
     "12": 1.0,
     "13": 1.0,
     "14": 1.0,
@@ -337,22 +352,12 @@
     {
       "id": "services_lta_service_ltadatamallclient",
       "label": "LTADataMallClient",
-      "degree": 26
-    },
-    {
-      "id": "services_traffic_service_trafficservice",
-      "label": "TrafficService",
-      "degree": 19
+      "degree": 18
     },
     {
       "id": "models_routing_location_routinglocation",
       "label": "RoutingLocation",
-      "degree": 16
-    },
-    {
-      "id": "routing_matrix_service_matrixservice",
-      "label": "MatrixService",
-      "degree": 13
+      "degree": 18
     },
     {
       "id": "services_lta_service_ltatrafficservice",
@@ -360,8 +365,8 @@
       "degree": 13
     },
     {
-      "id": "services_tomtom_service_tomtomtileservice",
-      "label": "TomTomTileService",
+      "id": "services_traffic_service_trafficservice",
+      "label": "TrafficService",
       "degree": 13
     },
     {
@@ -383,53 +388,19 @@
       "id": "models_vehicle_vehicle",
       "label": "Vehicle",
       "degree": 11
+    },
+    {
+      "id": "routing_matrix_service_matrixservice",
+      "label": "MatrixService",
+      "degree": 11
+    },
+    {
+      "id": "services_tomtom_service_tomtomtileservice",
+      "label": "TomTomTileService",
+      "degree": 11
     }
   ],
   "surprises": [
-    {
-      "source": "PlanningAgent",
-      "target": "MatrixService",
-      "source_files": [
-        "agents/planning_agent.py",
-        "routing/matrix_service.py"
-      ],
-      "confidence": "INFERRED",
-      "relation": "uses",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
-    },
-    {
-      "source": "run_live_traffic_agent_test()",
-      "target": "PlanningAgent",
-      "source_files": [
-        "test_planning_agent.py",
-        "agents/planning_agent.py"
-      ],
-      "confidence": "INFERRED",
-      "relation": "calls",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
-    },
-    {
-      "source": "RoutingAgent",
-      "target": "PlanningResult",
-      "source_files": [
-        "agents/routing_agent.py",
-        "models/assessment.py"
-      ],
-      "confidence": "INFERRED",
-      "relation": "uses",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
-    },
-    {
-      "source": "TrafficAgent",
-      "target": "LTADataMallClient",
-      "source_files": [
-        "agents/traffic_agent.py",
-        "services/lta_service.py"
-      ],
-      "confidence": "INFERRED",
-      "relation": "uses",
-      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
-    },
     {
       "source": "TrafficAgent",
       "target": "LTATrafficService",
@@ -439,24 +410,68 @@
       ],
       "confidence": "INFERRED",
       "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "WorkflowState",
+      "target": "WorldState",
+      "source_files": [
+        "workflow/state.py",
+        "models/world_state.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "RoutingWorkflow",
+      "target": "RoadMatcher",
+      "source_files": [
+        "workflow/routing_workflow.py",
+        "services/road_matcher.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "RoutingWorkflow",
+      "target": "TrafficService",
+      "source_files": [
+        "workflow/routing_workflow.py",
+        "services/traffic_service.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "PlanningAgent",
+      "target": "MatrixService",
+      "source_files": [
+        "agents/planning_agent.py",
+        "routing/matrix_service.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
     }
   ],
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `MatrixService` connect `RoutingLocation` to `LTADataMallClient`, `test_planning_agent.py`?",
-      "why": "High betweenness centrality (0.144) - this node is a cross-community bridge."
+      "question": "Why does `MatrixService` connect `RoutingLocation` to `main.py`?",
+      "why": "High betweenness centrality (0.141) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `LTADataMallClient` connect `LTADataMallClient` to `TrafficService`, `test_planning_agent.py`, `graph.py`?",
-      "why": "High betweenness centrality (0.139) - this node is a cross-community bridge."
+      "question": "Why does `RoutingLocation` connect `RoutingLocation` to `RouteStop`?",
+      "why": "High betweenness centrality (0.119) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `WorldState` connect `test_order_pipeline.py` to `LTADataMallClient`, `TrafficService`?",
-      "why": "High betweenness centrality (0.123) - this node is a cross-community bridge."
+      "question": "Why does `WorldState` connect `test_order_pipeline.py` to `LTADataMallClient`, `main.py`, `graph.py`?",
+      "why": "High betweenness centrality (0.119) - this node is a cross-community bridge."
     },
     {
       "type": "verify_inferred",
@@ -465,18 +480,18 @@
     },
     {
       "type": "verify_inferred",
+      "question": "Are the 7 inferred relationships involving `RoutingLocation` (e.g. with `RouteStop` and `TravelMatrix`) actually correct?",
+      "why": "`RoutingLocation` has 7 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
       "question": "Are the 4 inferred relationships involving `TrafficService` (e.g. with `RoadSpeedObservation` and `TrafficIncident`) actually correct?",
       "why": "`TrafficService` has 4 INFERRED edges - model-reasoned connections that need verification."
     },
     {
       "type": "verify_inferred",
-      "question": "Are the 6 inferred relationships involving `RoutingLocation` (e.g. with `TravelMatrix` and `MatrixService`) actually correct?",
-      "why": "`RoutingLocation` has 6 INFERRED edges - model-reasoned connections that need verification."
-    },
-    {
-      "type": "verify_inferred",
-      "question": "Are the 5 inferred relationships involving `MatrixService` (e.g. with `PlanningAgent` and `.__init__()`) actually correct?",
-      "why": "`MatrixService` has 5 INFERRED edges - model-reasoned connections that need verification."
+      "question": "Are the 5 inferred relationships involving `OrderState` (e.g. with `OrderExtractionAgent` and `build_order_graph()`) actually correct?",
+      "why": "`OrderState` has 5 INFERRED edges - model-reasoned connections that need verification."
     }
   ]
 }

@@ -1,21 +1,33 @@
-# workflow/nodes/planning_node.py
-
-from agents.routing_agent import RoutingAgent
-from langsmith import traceable
-
-agent = RoutingAgent()
+from routing import matrix_service, route_builder, or_tools_solver
 
 
-# Un-comment this whenever you want to see visual traces in your LangSmith dashboard!
-# @traceable(name="Planning Agent Node")
+
+
+@traceable(name="Planning Node")
 def planning_node(state):
+
     world = state["world"]
 
-    result = agent.evaluate(world.context)
+    problem = problem_builder.build(world)
 
-    # This works cleanly now because the fields exist on WorldState!
-    world.assessments = result.assessments
-    world.recommend_replan = result.recommend_replan
-    world.summary = result.summary
+    matrix = matrix_service.build(
+        world,
+        problem.locations,
+    )
+
+    routes = or_tools_solver.solve(
+        matrix=matrix.matrix,
+        starts=problem.starts,
+        ends=problem.ends,
+        demands=problem.demands,
+        capacities=problem.capacities,
+    )
+
+    world.routes = route_builder.build(
+        world,
+        matrix,
+        world.vehicles,
+        routes,
+    )
 
     return {"world": world}
