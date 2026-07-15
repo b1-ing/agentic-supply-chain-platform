@@ -92,6 +92,7 @@ def test_matrix_service_locations_contents(matrix_service, mock_world):
     """Test that the returned locations preserve their metadata."""
 
     depot = RoutingLocation(
+        matrix_index=0,
         graph_node=100,
         lat=1.300,
         lon=103.800,
@@ -101,6 +102,7 @@ def test_matrix_service_locations_contents(matrix_service, mock_world):
     )
 
     pickup = RoutingLocation(
+        matrix_index=1,
         graph_node=200,
         lat=1.310,
         lon=103.810,

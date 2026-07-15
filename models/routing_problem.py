@@ -21,6 +21,9 @@ class RoutingProblem:
 
     capacities: list[int]
 
+    pickup_delivery_pairs: list[tuple[int, int]]
+
+
     @property
     def vehicle_count(self) -> int:
         return len(self.vehicles)

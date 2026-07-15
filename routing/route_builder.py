@@ -182,8 +182,9 @@ class RouteBuilder:
         ###############################################################
         # Build geometry
         ###############################################################
-
+        print("path:", path)
         for node in path:
+            print("node:", graph.nodes[0])
 
             geometry.append(
                 (

@@ -11,7 +11,9 @@ class ORToolsSolver:
         ends,
         demands,
         capacities,
+        pickup_delivery_pairs,
         time_limit: int = 10,
+
     ):
         """
         Solve a Capacitated Vehicle Routing Problem (CVRP).
@@ -54,7 +56,35 @@ class ORToolsSolver:
             ends,
         )
 
+        print("Number of nodes:", manager.GetNumberOfNodes())
+        print("Number of vehicles:", len(capacities))
+        print("Starts:", starts)
+        print("Ends:", ends)
+
+        for i in range(10):
+            try:
+                print(i, "->", manager.IndexToNode(i))
+            except Exception as e:
+                print(i, e)
+
         routing = pywrapcp.RoutingModel(manager)
+
+
+        for pickup, delivery in pickup_delivery_pairs:
+            pickup_idx = manager.NodeToIndex(pickup)
+            delivery_idx = manager.NodeToIndex(delivery)
+
+            routing.AddPickupAndDelivery(pickup_idx, delivery_idx)
+
+            routing.solver().Add(
+            routing.VehicleVar(pickup_idx) ==
+            routing.VehicleVar(delivery_idx)
+            )
+
+            routing.solver().Add(
+            routing.CumulVar(pickup_idx) <=
+            routing.CumulVar(delivery_idx)
+            )
 
         # --------------------------------------------------
         # Travel cost callback
@@ -63,7 +93,6 @@ class ORToolsSolver:
         Transit callback: a function that takes any pair of locations and returns the distance between them.
         """
         def transit_callback(from_index, to_index):
-
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
 
@@ -156,7 +185,7 @@ class ORToolsSolver:
             index = routing.Start(vehicle_id)
 
             while not routing.IsEnd(index):
-
+                print("routing index:", index)
                 route.append(
                     manager.IndexToNode(index)
                 )
@@ -164,7 +193,7 @@ class ORToolsSolver:
                 index = solution.Value(
                     routing.NextVar(index)
                 )
-
+            print("end routing index:", index)
             route.append(
                 manager.IndexToNode(index)
             )

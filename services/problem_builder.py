@@ -1,7 +1,7 @@
 from models.routing_problem import RoutingProblem
 from models.world_state import WorldState
-from routing_location import RoutingLocation
-from vehicles.vehicle import Vehicle
+from models.routing_location import RoutingLocation
+from models.vehicles.vehicle import Vehicle, VehicleStatus
 
 
 class RoutingProblemBuilder:
@@ -15,7 +15,6 @@ class RoutingProblemBuilder:
 
         locations = self._build_locations(
             world,
-            vehicles,
         )
 
         starts = self._build_starts(
@@ -37,9 +36,25 @@ class RoutingProblemBuilder:
             vehicles,
         )
 
-        return RoutingProblem(...)
+        pickup_delivery_pairs = self._build_pickup_delivery_pairs(
+            world,
+            locations,
+        )
 
-    def _select_vehicles(world: WorldState):
+        return RoutingProblem(
+            vehicles=vehicles,
+            locations=locations,
+            starts=starts,
+            ends=ends,
+            demands=demands,
+            capacities=capacities,
+            pickup_delivery_pairs=pickup_delivery_pairs,
+        )
+
+    def _select_vehicles(
+            self,
+            world: WorldState
+    ):
         """
         Filters all the vehicles available according to their availability.
 
@@ -51,9 +66,10 @@ class RoutingProblemBuilder:
         """
         available_vehicles = []
         for vehicle in world.vehicles:
-            if vehicle.status == Vehicle.Status.AVAILABLE:
+            if vehicle.status == VehicleStatus.IDLE:
                 available_vehicles.append(vehicle)
         return available_vehicles
+
     def _build_locations(
             self,
             world: WorldState,
@@ -62,9 +78,7 @@ class RoutingProblemBuilder:
         locations: list[RoutingLocation] = []
 
         self._build_depots(world, locations)
-        self._build_pickups(world, locations)
-        self._build_deliveries(world, locations)
-
+        self._build_order_points(world, locations)
         return locations
 
 
@@ -87,7 +101,7 @@ class RoutingProblemBuilder:
             )
 
 
-    def _build_pickups(
+    def _build_order_points(
             self,
             world: WorldState,
             locations: list[RoutingLocation],
@@ -106,15 +120,6 @@ class RoutingProblemBuilder:
                 )
             )
 
-
-    def _build_deliveries(
-            self,
-            world: WorldState,
-            locations: list[RoutingLocation],
-    ) -> None:
-
-        for order in world.orders:
-
             locations.append(
                 RoutingLocation(
                     matrix_index=len(locations),
@@ -126,11 +131,20 @@ class RoutingProblemBuilder:
                 )
             )
 
+
+
     def _build_starts(
             self,
             vehicles: list[Vehicle],
             locations: list[RoutingLocation],
     ) -> list[int]:
+
+        """
+
+        :param vehicles:
+        :param locations:
+        :return:
+        """
 
         depot_index = next(
             location.matrix_index
@@ -139,6 +153,30 @@ class RoutingProblemBuilder:
         )
 
         return [depot_index for _ in vehicles]
+
+    def _build_ends(
+            self,
+            vehicles,
+            locations,
+    ):
+
+        depot_index = next(
+            location.matrix_index
+            for location in locations
+            if location.kind == "depot"
+        )
+
+        return [depot_index for _ in vehicles]
+
+    def _build_capacities(
+            self,
+            vehicles: list[Vehicle],
+    ) -> list[int]:
+
+        return [
+            int(vehicle.max_weight_kg)
+            for vehicle in vehicles
+        ]
 
     def _build_demands(
             self,
@@ -170,6 +208,35 @@ class RoutingProblemBuilder:
                 demands.append(-weight)
 
         return demands
+
+    def _build_pickup_delivery_pairs(
+            self,
+            world,
+            locations,
+    ) -> list[tuple[int, int]]:
+
+        pickup_indices = {}
+        delivery_indices = {}
+
+        for index, location in enumerate(locations):
+
+            if location.kind == "pickup":
+                pickup_indices[location.order_id] = index
+
+            elif location.kind == "delivery":
+                delivery_indices[location.order_id] = index
+
+        pairs = []
+
+        for order in world.orders:
+            pairs.append(
+                (
+                    pickup_indices[order.order_id],
+                    delivery_indices[order.order_id],
+                )
+            )
+
+        return pairs
 
 
 

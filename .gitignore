@@ -9,5 +9,8 @@
 /dataSources/
 /dataSources.local.xml
 .env
+# Ignore Python virtual environments
+venv/
+.venv/
 cache
 

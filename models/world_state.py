@@ -5,7 +5,7 @@ import networkx as nx
 
 from models.events import TrafficIncident
 from models.incoming_state import IncomingOrder
-
+from models.depot import Depot
 
 from models.vehicles.vehicle import Vehicle
 # from models.mission import Mission
@@ -17,7 +17,7 @@ class WorldState:
     depots: list[Depot]
     
     graph: nx.MultiDiGraph = None
-    mapping: Dict = None
+    mapping: dict = None
 
     # 2. Sequential lists initializing with factories
     traffic_events: list[TrafficIncident] = field(default_factory=list)
