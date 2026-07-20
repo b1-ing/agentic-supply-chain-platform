@@ -88,6 +88,10 @@ class RoutingProblemBuilder:
             locations: list[RoutingLocation],
     ) -> None:
 
+        """
+        to fill in
+        """
+
         for depot in world.depots:
 
             locations.append(
@@ -106,6 +110,14 @@ class RoutingProblemBuilder:
             world: WorldState,
             locations: list[RoutingLocation],
     ) -> None:
+        """
+        Creates new RoutingLocation objects based on the pickup and delivery points
+        in each pair of orders.
+
+        Pickup and delivery points are deliberately given adjacent indexes in the array.RoutingLocation
+
+        Question: what about repeated locations??
+        """
 
         for order in world.orders:
 

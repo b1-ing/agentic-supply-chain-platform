@@ -11,18 +11,15 @@ from models.vehicles.vehicle import Vehicle
 
 
 class RouteBuilder:
-    """
-    Converts the raw OR-Tools solution into domain models.
+    """Converts the raw OR-Tools solution into domain models.
 
     OR-Tools output:
-
         [
             [0, 3, 5, 0],
             [1, 4, 2, 1],
         ]
 
-    becomes
-
+    becomes:
         RoutePlan
             ├── VehicleRoute
             │     ├── RouteStops
@@ -37,7 +34,25 @@ class RouteBuilder:
             vehicles: list[Vehicle],
             routes: list[list[int]],
     ) -> RoutePlan:
+        """Constructs a complete RoutePlan from raw optimization routes.
 
+        Args:
+            world: The world context containing the underlying routing graph.
+            travel_matrix: The distance/time matrix mapping locations to indices.
+            vehicles: A list of Vehicle objects assigned to the routes.
+            routes: A list of lists, where each sublist contains the sequence of
+                matrix indices representing a vehicle's route.
+
+        Returns:
+            A fully populated RoutePlan containing the routes for all vehicles
+            along with combined total distances and travel times.
+
+            RoutePlan consists of:
+                routes: list[VehicleRoute] (list of the routes of all vehicles)
+                total_distance: float
+                total_travel_time: float
+
+        """
         vehicle_routes: list[VehicleRoute] = []
 
         for vehicle, route in zip(vehicles, routes):
@@ -74,7 +89,26 @@ class RouteBuilder:
             vehicle: Vehicle,
             route: list[int],
     ) -> VehicleRoute:
+        """Builds a high-level route for a specific vehicle.
 
+        Args:
+            world: The world context containing the underlying routing graph.
+            travel_matrix: The matrix mapping indices to geographical locations.
+            vehicle: The Vehicle instance executing this route.
+            route: The sequence of matrix indices representing stops.
+
+        Returns:
+            A VehicleRoute domain object containing stops, detailed street-network
+            segments, and accumulated metrics.
+
+            VehicleRoute consists of:
+            vehicle_id: str (identifies the vehicle)
+            stops: list[RouteStop]
+            segments: list[RouteSegment]
+            total_distance
+            total_travel_time
+
+        """
         stops = self._build_stops(
             travel_matrix,
             route,
@@ -85,6 +119,9 @@ class RouteBuilder:
             stops,
         )
 
+
+
+        # the below are self explanatory, calculating distance and travel times from each segments only
         total_distance = sum(
             segment.distance
             for segment in segments
@@ -94,6 +131,7 @@ class RouteBuilder:
             segment.travel_time
             for segment in segments
         )
+
 
         return VehicleRoute(
             vehicle_id=vehicle.vehicle_id,
@@ -112,7 +150,22 @@ class RouteBuilder:
             travel_matrix: TravelMatrix,
             route: list[int],
     ) -> list[RouteStop]:
+        """Maps raw matrix route indices to a sequence of domain RouteStop objects.
 
+        Args:
+            travel_matrix: The matrix mapping indices to geographical locations.
+            route: The ordered sequence of matrix indices.
+
+        Returns:
+            A list of RouteStop objects with assigned sequences and location data.
+
+            RouteStop object consists of:
+            sequence:int
+            location: RoutingLocation
+            arrival_time
+            departure_time
+            load_after_stop
+        """
         stops: list[RouteStop] = []
 
         for sequence, matrix_index in enumerate(route):
@@ -137,7 +190,16 @@ class RouteBuilder:
             world,
             stops: list[RouteStop],
     ) -> list[RouteSegment]:
+        """Generates detailed street-level route segments between all sequential stops.
 
+        Args:
+            world: The world context containing the underlying routing graph.
+            stops: A list of RouteStop objects representing the visited locations.
+
+        Returns:
+            A list of RouteSegment objects connecting the stops. Returns an empty
+            list if there are fewer than two stops.
+        """
         segments: list[RouteSegment] = []
 
         if len(stops) < 2:
@@ -164,7 +226,20 @@ class RouteBuilder:
             from_node: int,
             to_node: int,
     ) -> RouteSegment:
+        """Calculates the shortest street-network path and costs between two graph nodes.
 
+        Calculates the fastest route using NetworkX, extracts geometry coordinates,
+        and sums up distance and travel time from the chosen edges.
+
+        Args:
+            world: The world context containing the underlying routing graph.
+            from_node: The starting NetworkX graph node ID.
+            to_node: The destination NetworkX graph node ID.
+
+        Returns:
+            A detailed RouteSegment object containing the path, shape coordinates,
+            and aggregate costs.
+        """
         graph = world.graph
 
         path = nx.shortest_path(
@@ -234,13 +309,23 @@ class RouteBuilder:
             u,
             v,
     ):
-        """
-        Supports both DiGraph and MultiDiGraph.
+        """Retrieves the edge data between two nodes, choosing the fastest if duplicates exist.
 
-        For MultiDiGraph, choose the edge with the
-        lowest travel_time.
-        """
+        Supports both standard NetworkX DiGraph and MultiDiGraph structures. For
+        parallel edges in a MultiDiGraph, it selects the edge with the lowest
+        `travel_time`.
 
+        Args:
+            graph: The NetworkX graph containing the edge.
+            u: The source node ID.
+            v: The target node ID.
+
+        Returns:
+            dict: The dictionary containing the chosen edge's properties.
+
+        Raises:
+            RuntimeError: If no edge exists between node `u` and node `v`.
+        """
         edge = graph.get_edge_data(u, v)
 
         if edge is None:

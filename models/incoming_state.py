@@ -60,6 +60,8 @@ class IncomingOrder(BaseModel):
     earliest_delivery: Optional[str] = None
     latest_delivery: Optional[str] = None
 
+    order_id: Optional[str] = None
+
     notes: Optional[str] = Field(
         default=None, description="Additional customer instructions."
     )

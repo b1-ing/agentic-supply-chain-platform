@@ -49,6 +49,15 @@ class ORToolsSolver:
             ]
         """
 
+        print("matrix type:", type(matrix))
+        print("matrix dtype:", getattr(matrix, "dtype", None))
+        print("matrix shape:", getattr(matrix, "shape", None))
+
+        print("starts:", starts, [type(x) for x in starts])
+        print("ends:", ends, [type(x) for x in ends])
+        print("demands:", demands, [type(x) for x in demands])
+        print("capacities:", capacities, [type(x) for x in capacities])
+
         manager = pywrapcp.RoutingIndexManager(
             len(matrix),
             len(capacities),
@@ -61,30 +70,13 @@ class ORToolsSolver:
         print("Starts:", starts)
         print("Ends:", ends)
 
-        for i in range(10):
+        for i in range(manager.GetNumberOfNodes()):
             try:
                 print(i, "->", manager.IndexToNode(i))
             except Exception as e:
                 print(i, e)
 
         routing = pywrapcp.RoutingModel(manager)
-
-
-        for pickup, delivery in pickup_delivery_pairs:
-            pickup_idx = manager.NodeToIndex(pickup)
-            delivery_idx = manager.NodeToIndex(delivery)
-
-            routing.AddPickupAndDelivery(pickup_idx, delivery_idx)
-
-            routing.solver().Add(
-            routing.VehicleVar(pickup_idx) ==
-            routing.VehicleVar(delivery_idx)
-            )
-
-            routing.solver().Add(
-            routing.CumulVar(pickup_idx) <=
-            routing.CumulVar(delivery_idx)
-            )
 
         # --------------------------------------------------
         # Travel cost callback
@@ -102,6 +94,47 @@ class ORToolsSolver:
             transit_callback
         )
 
+        routing.AddDimension(
+            transit_callback_index,
+            9000,      # slack_max: Maximum waiting time allowed at a location
+            86400,   # capacity: Maximum total time per vehicle route (e.g., 24 hours)
+            False,    # fix_start_cumul_to_zero: Force vehicle start time to 0
+            "Time"   # name: The exact string key needed for GetDimensionOrDie()
+        )
+
+        time_dimension = routing.GetDimensionOrDie("Time")
+
+        for pickup, delivery in pickup_delivery_pairs:
+            pickup_idx = manager.NodeToIndex(pickup)
+            delivery_idx = manager.NodeToIndex(delivery)
+
+            routing.AddPickupAndDelivery(pickup_idx, delivery_idx)
+
+            routing.solver().Add(
+            routing.VehicleVar(pickup_idx) ==
+            routing.VehicleVar(delivery_idx)
+            )
+            routing.solver().Add(
+            time_dimension.CumulVar(pickup_idx) <=
+            time_dimension.CumulVar(delivery_idx)
+            )
+
+
+        print(demands)
+        print(type(demands))
+        print(len(demands))
+
+
+
+
+
+
+
+
+
+
+
+
 
         """
         The arc cost evaluator tells the solver how to calculate the cost of travel between any two locations.
@@ -115,23 +148,23 @@ class ORToolsSolver:
         # Capacity constraint
         # --------------------------------------------------
 
-        def demand_callback(index):
-
-            node = manager.IndexToNode(index)
-
-            return demands[node]
-
-        demand_callback_index = routing.RegisterUnaryTransitCallback(
-            demand_callback
-        )
-
-        routing.AddDimensionWithVehicleCapacity(
-            demand_callback_index,
-            0,                  # slack
-            capacities,
-            True,
-            "Capacity",
-        )
+#         def demand_callback(index):
+#
+#             node = manager.IndexToNode(int(index))
+#
+#             return demands[node]
+#
+#         demand_callback_index = routing.RegisterUnaryTransitCallback(
+#             demand_callback
+#         )
+#
+#         routing.AddDimensionWithVehicleCapacity(
+#             demand_callback_index,
+#             0,                  # slack
+#             capacities,
+#             True,
+#             "Capacity",
+#         )
 
         # --------------------------------------------------
         # Search parameters
