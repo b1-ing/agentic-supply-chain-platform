@@ -1,7 +1,6 @@
 from copy import deepcopy
 from pprint import pprint
 
-from models import world_state
 from models.order_state import OrderState
 from models.world_state import WorldState
 
