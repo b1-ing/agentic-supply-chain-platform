@@ -15,14 +15,17 @@ from models.incoming_state import IncomingOrder
 # Dummy models
 # ---------------------------------------------------------
 
+
 class DummyDepot:
     graph_node = 0
     lat = 1.300
     lon = 103.800
 
+
 # ---------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------
+
 
 def build_test_graph() -> nx.MultiDiGraph:
     graph = nx.MultiDiGraph()
@@ -43,20 +46,16 @@ def build_test_graph() -> nx.MultiDiGraph:
         )
 
     edges = [
-        (0,1,500),
-        (1,0,500),
-
-        (1,2,400),
-        (2,1,400),
-
-        (2,3,300),
-        (3,2,300),
-
-        (3,4,200),
-        (4,3,200),
-
-        (4,0,600),
-        (0,4,600),
+        (0, 1, 500),
+        (1, 0, 500),
+        (1, 2, 400),
+        (2, 1, 400),
+        (2, 3, 300),
+        (3, 2, 300),
+        (3, 4, 200),
+        (4, 3, 200),
+        (4, 0, 600),
+        (0, 4, 600),
     ]
 
     for u, v, length in edges:
@@ -74,6 +73,7 @@ def build_test_graph() -> nx.MultiDiGraph:
 # Integration test
 # ---------------------------------------------------------
 
+
 def test_full_routing_pipeline():
 
     # --------------------------------------------------
@@ -83,12 +83,12 @@ def test_full_routing_pipeline():
     world = WorldState(
         graph=build_test_graph(),
         depots=[DummyDepot()],
-        vehicles=[StandardTruck(vehicle_id = "1")],
+        vehicles=[StandardTruck(vehicle_id="1")],
         orders=[
             IncomingOrder(
                 pickup_address="location A",
                 delivery_address=" ",
-                order_id = "order-1",
+                order_id="order-1",
                 pickup_node=1,
                 delivery_node=3,
                 weight=20,
@@ -96,7 +96,7 @@ def test_full_routing_pipeline():
             IncomingOrder(
                 pickup_address="location B",
                 delivery_address=" ",
-                order_id = "order-2",
+                order_id="order-2",
                 pickup_node=2,
                 delivery_node=4,
                 weight=30,
@@ -107,20 +107,20 @@ def test_full_routing_pipeline():
     problem = RoutingProblemBuilder().build(world)
 
     # Insert this right after building the problem in your test
-#     print("\n--- DEBUG: Location Indices ---")
-#     for loc in problem.locations:
-#         print(f"Index: {loc.matrix_index} | Kind: {loc.kind:<8} | Graph Node: {loc.graph_node} | ID: {getattr(loc, 'order_id', 'N/A')}")
-#
-#     print(f"Vehicle Starts Matrix Indices: {problem.starts}")
-#     print(f"Vehicle Ends Matrix Indices:   {problem.ends}")
-#     print("-------------------------------\n")
-#
+    #     print("\n--- DEBUG: Location Indices ---")
+    #     for loc in problem.locations:
+    #         print(f"Index: {loc.matrix_index} | Kind: {loc.kind:<8} | Graph Node: {loc.graph_node} | ID: {getattr(loc, 'order_id', 'N/A')}")
+    #
+    #     print(f"Vehicle Starts Matrix Indices: {problem.starts}")
+    #     print(f"Vehicle Ends Matrix Indices:   {problem.ends}")
+    #     print("-------------------------------\n")
+    #
     matrix = MatrixService().build(
         world,
         problem.locations,
     )
 
-#     print(matrix.matrix)
+    #     print(matrix.matrix)
 
     # --------------------------------------------------
     # Act
@@ -144,7 +144,6 @@ def test_full_routing_pipeline():
         routes=routes,
         travel_matrix=matrix,
         vehicles=problem.vehicles,
-
     )
 
     # --------------------------------------------------
@@ -160,10 +159,7 @@ def test_full_routing_pipeline():
     assert vehicle_route.stops[0].location.kind == "depot"
     assert vehicle_route.stops[-1].location.kind == "depot"
 
-    kinds = {
-        stop.location.kind
-        for stop in vehicle_route.stops
-    }
+    kinds = {stop.location.kind for stop in vehicle_route.stops}
 
     assert "pickup" in kinds
     assert "delivery" in kinds
@@ -175,6 +171,7 @@ def test_full_routing_pipeline():
 
     assert route_plan.total_distance >= 0
     assert route_plan.total_travel_time >= 0
+
 
 def test_multiple_vehicles():
 
@@ -229,7 +226,6 @@ def test_multiple_vehicles():
         routes=routes,
         travel_matrix=matrix,
         vehicles=problem.vehicles,
-
     )
 
     assert len(route_plan.routes) == 2
@@ -238,7 +234,6 @@ def test_multiple_vehicles():
     # Every route starts/ends at depot
     #
     for route in route_plan.routes:
-
         assert route.stops[0].location.kind == "depot"
         assert route.stops[-1].location.kind == "depot"
 
@@ -259,6 +254,7 @@ def test_multiple_vehicles():
 
     assert len(visited) == 4
     assert len(set(visited)) == 4
+
 
 def test_pickups_occur_before_deliveries():
 
@@ -309,13 +305,11 @@ def test_pickups_occur_before_deliveries():
         routes=routes,
         travel_matrix=matrix,
         vehicles=problem.vehicles,
-
     )
 
     route = route_plan.routes[0]
 
     for order in world.orders:
-
         pickup_index = next(
             i
             for i, stop in enumerate(route.stops)

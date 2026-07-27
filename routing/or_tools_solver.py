@@ -3,7 +3,6 @@ from ortools.constraint_solver import routing_enums_pb2
 
 
 class ORToolsSolver:
-
     def solve(
         self,
         matrix,
@@ -13,7 +12,6 @@ class ORToolsSolver:
         capacities,
         pickup_delivery_pairs,
         time_limit: int = 10,
-
     ):
         """
         Solve a Capacitated Vehicle Routing Problem (CVRP).
@@ -84,22 +82,21 @@ class ORToolsSolver:
         """
         Transit callback: a function that takes any pair of locations and returns the distance between them.
         """
+
         def transit_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
 
             return int(matrix[from_node][to_node])
 
-        transit_callback_index = routing.RegisterTransitCallback(
-            transit_callback
-        )
+        transit_callback_index = routing.RegisterTransitCallback(transit_callback)
 
         routing.AddDimension(
             transit_callback_index,
-            9000,      # slack_max: Maximum waiting time allowed at a location
-            86400,   # capacity: Maximum total time per vehicle route (e.g., 24 hours)
-            False,    # fix_start_cumul_to_zero: Force vehicle start time to 0
-            "Time"   # name: The exact string key needed for GetDimensionOrDie()
+            9000,  # slack_max: Maximum waiting time allowed at a location
+            86400,  # capacity: Maximum total time per vehicle route (e.g., 24 hours)
+            False,  # fix_start_cumul_to_zero: Force vehicle start time to 0
+            "Time",  # name: The exact string key needed for GetDimensionOrDie()
         )
 
         time_dimension = routing.GetDimensionOrDie("Time")
@@ -111,60 +108,44 @@ class ORToolsSolver:
             routing.AddPickupAndDelivery(pickup_idx, delivery_idx)
 
             routing.solver().Add(
-            routing.VehicleVar(pickup_idx) ==
-            routing.VehicleVar(delivery_idx)
+                routing.VehicleVar(pickup_idx) == routing.VehicleVar(delivery_idx)
             )
             routing.solver().Add(
-            time_dimension.CumulVar(pickup_idx) <=
-            time_dimension.CumulVar(delivery_idx)
+                time_dimension.CumulVar(pickup_idx)
+                <= time_dimension.CumulVar(delivery_idx)
             )
-
 
         print(demands)
         print(type(demands))
         print(len(demands))
 
-
-
-
-
-
-
-
-
-
-
-
-
         """
         The arc cost evaluator tells the solver how to calculate the cost of travel between any two locations.
         In other words, the cost of the edge (or arc) joining them in the graph for the problem.
         """
-        routing.SetArcCostEvaluatorOfAllVehicles(
-            transit_callback_index
-        )
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
         # --------------------------------------------------
         # Capacity constraint
         # --------------------------------------------------
 
-#         def demand_callback(index):
-#
-#             node = manager.IndexToNode(int(index))
-#
-#             return demands[node]
-#
-#         demand_callback_index = routing.RegisterUnaryTransitCallback(
-#             demand_callback
-#         )
-#
-#         routing.AddDimensionWithVehicleCapacity(
-#             demand_callback_index,
-#             0,                  # slack
-#             capacities,
-#             True,
-#             "Capacity",
-#         )
+        #         def demand_callback(index):
+        #
+        #             node = manager.IndexToNode(int(index))
+        #
+        #             return demands[node]
+        #
+        #         demand_callback_index = routing.RegisterUnaryTransitCallback(
+        #             demand_callback
+        #         )
+        #
+        #         routing.AddDimensionWithVehicleCapacity(
+        #             demand_callback_index,
+        #             0,                  # slack
+        #             capacities,
+        #             True,
+        #             "Capacity",
+        #         )
 
         # --------------------------------------------------
         # Search parameters
@@ -186,9 +167,7 @@ class ORToolsSolver:
         # Solve
         # --------------------------------------------------
 
-        solution = routing.SolveWithParameters(
-            search_parameters
-        )
+        solution = routing.SolveWithParameters(search_parameters)
 
         if solution is None:
             return None
@@ -212,24 +191,17 @@ class ORToolsSolver:
         routes = []
 
         for vehicle_id in range(routing.vehicles()):
-
             route = []
 
             index = routing.Start(vehicle_id)
 
             while not routing.IsEnd(index):
                 print("routing index:", index)
-                route.append(
-                    manager.IndexToNode(index)
-                )
+                route.append(manager.IndexToNode(index))
 
-                index = solution.Value(
-                    routing.NextVar(index)
-                )
+                index = solution.Value(routing.NextVar(index))
             print("end routing index:", index)
-            route.append(
-                manager.IndexToNode(index)
-            )
+            route.append(manager.IndexToNode(index))
 
             routes.append(route)
 

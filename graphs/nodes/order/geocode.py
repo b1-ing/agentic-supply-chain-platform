@@ -1,4 +1,4 @@
-from services.geocode_service import GeocodingService
+from services.geocoding_service import GeocodingService
 
 
 def geocode_order(state):

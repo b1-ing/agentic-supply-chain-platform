@@ -28,7 +28,7 @@ def test_solver_returns_valid_routes():
     ends = [0, 0]
 
     demands = [
-        0,      # depot
+        0,  # depot
         20,
         30,
         10,
@@ -78,11 +78,7 @@ def test_solver_returns_valid_routes():
     visited = []
 
     for route in routes:
-        visited.extend(
-            node
-            for node in route
-            if node != 0
-        )
+        visited.extend(node for node in route if node != 0)
 
     #
     # Every customer visited exactly once
@@ -95,6 +91,7 @@ def test_solver_returns_valid_routes():
     #
 
     assert len(visited) == len(set(visited))
+
 
 def test_solver_respects_capacity():
 

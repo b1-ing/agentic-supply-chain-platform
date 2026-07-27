@@ -12,5 +12,6 @@
 # Ignore Python virtual environments
 venv/
 .venv/
-cache
+.cache/
+graphify-out/
 

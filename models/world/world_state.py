@@ -15,7 +15,7 @@ from models.vehicles.vehicle import Vehicle
 class WorldState:
     # 1. Non-default arguments MUST go at the very top
     depots: list[Depot]
-    
+
     graph: nx.MultiDiGraph = None
     mapping: dict = None
 
@@ -30,7 +30,9 @@ class WorldState:
     constraints: list = field(default_factory=list)
     routes: list = field(default_factory=list)
 
-    orders: list[IncomingOrder] = field(default_factory=list)
+    new_orders: list[IncomingOrder] = field(default_factory=list)
+    orders_in_progress: list[IncomingOrder] = field(default_factory=list)
+    cancelled_orders: list[IncomingOrder] = field(default_factory=list)
 
     # 3. Primitive fields using the correct type annotation syntax with default values
     recommend_replan: bool = False

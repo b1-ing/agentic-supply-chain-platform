@@ -28,11 +28,11 @@ class RouteBuilder:
     """
 
     def build(
-            self,
-            world,
-            travel_matrix: TravelMatrix,
-            vehicles: list[Vehicle],
-            routes: list[list[int]],
+        self,
+        world,
+        travel_matrix: TravelMatrix,
+        vehicles: list[Vehicle],
+        routes: list[list[int]],
     ) -> RoutePlan:
         """Constructs a complete RoutePlan from raw optimization routes.
 
@@ -56,7 +56,6 @@ class RouteBuilder:
         vehicle_routes: list[VehicleRoute] = []
 
         for vehicle, route in zip(vehicles, routes):
-
             vehicle_route = self._build_vehicle_route(
                 world,
                 travel_matrix,
@@ -68,14 +67,8 @@ class RouteBuilder:
 
         return RoutePlan(
             routes=vehicle_routes,
-            total_distance=sum(
-                route.total_distance
-                for route in vehicle_routes
-            ),
-            total_travel_time=sum(
-                route.total_travel_time
-                for route in vehicle_routes
-            ),
+            total_distance=sum(route.total_distance for route in vehicle_routes),
+            total_travel_time=sum(route.total_travel_time for route in vehicle_routes),
         )
 
     ####################################################################
@@ -83,11 +76,11 @@ class RouteBuilder:
     ####################################################################
 
     def _build_vehicle_route(
-            self,
-            world,
-            travel_matrix: TravelMatrix,
-            vehicle: Vehicle,
-            route: list[int],
+        self,
+        world,
+        travel_matrix: TravelMatrix,
+        vehicle: Vehicle,
+        route: list[int],
     ) -> VehicleRoute:
         """Builds a high-level route for a specific vehicle.
 
@@ -119,19 +112,10 @@ class RouteBuilder:
             stops,
         )
 
-
-
         # the below are self explanatory, calculating distance and travel times from each segments only
-        total_distance = sum(
-            segment.distance
-            for segment in segments
-        )
+        total_distance = sum(segment.distance for segment in segments)
 
-        total_travel_time = sum(
-            segment.travel_time
-            for segment in segments
-        )
-
+        total_travel_time = sum(segment.travel_time for segment in segments)
 
         return VehicleRoute(
             vehicle_id=vehicle.vehicle_id,
@@ -146,9 +130,9 @@ class RouteBuilder:
     ####################################################################
 
     def _build_stops(
-            self,
-            travel_matrix: TravelMatrix,
-            route: list[int],
+        self,
+        travel_matrix: TravelMatrix,
+        route: list[int],
     ) -> list[RouteStop]:
         """Maps raw matrix route indices to a sequence of domain RouteStop objects.
 
@@ -169,7 +153,6 @@ class RouteBuilder:
         stops: list[RouteStop] = []
 
         for sequence, matrix_index in enumerate(route):
-
             location = travel_matrix.locations[matrix_index]
 
             stops.append(
@@ -186,9 +169,9 @@ class RouteBuilder:
     ####################################################################
 
     def _build_segments(
-            self,
-            world,
-            stops: list[RouteStop],
+        self,
+        world,
+        stops: list[RouteStop],
     ) -> list[RouteSegment]:
         """Generates detailed street-level route segments between all sequential stops.
 
@@ -206,10 +189,9 @@ class RouteBuilder:
             return segments
 
         for current, nxt in zip(
-                stops,
-                stops[1:],
+            stops,
+            stops[1:],
         ):
-
             segment = self._build_segment(
                 world,
                 current.location.graph_node,
@@ -221,10 +203,10 @@ class RouteBuilder:
         return segments
 
     def _build_segment(
-            self,
-            world,
-            from_node: int,
-            to_node: int,
+        self,
+        world,
+        from_node: int,
+        to_node: int,
     ) -> RouteSegment:
         """Calculates the shortest street-network path and costs between two graph nodes.
 
@@ -263,8 +245,8 @@ class RouteBuilder:
 
             geometry.append(
                 (
-                    graph.nodes[node]["y"],   # latitude
-                    graph.nodes[node]["x"],   # longitude
+                    graph.nodes[node]["y"],  # latitude
+                    graph.nodes[node]["x"],  # longitude
                 )
             )
 
@@ -273,7 +255,6 @@ class RouteBuilder:
         ###############################################################
 
         for u, v in zip(path, path[1:]):
-
             edge = self._best_edge(
                 graph,
                 u,
@@ -305,9 +286,9 @@ class RouteBuilder:
 
     @staticmethod
     def _best_edge(
-            graph,
-            u,
-            v,
+        graph,
+        u,
+        v,
     ):
         """Retrieves the edge data between two nodes, choosing the fastest if duplicates exist.
 
@@ -329,9 +310,7 @@ class RouteBuilder:
         edge = graph.get_edge_data(u, v)
 
         if edge is None:
-            raise RuntimeError(
-                f"No edge exists between {u} and {v}"
-            )
+            raise RuntimeError(f"No edge exists between {u} and {v}")
 
         if "travel_time" in edge:
             return edge

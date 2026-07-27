@@ -12,6 +12,7 @@ from services.problem_builder import RoutingProblemBuilder
 # Dummy models for testing
 # ---------------------------------------------------------------------
 
+
 class DummyDepot:
     def __init__(self):
         self.graph_node = 100
@@ -44,6 +45,7 @@ class DummyOrder:
 # ---------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------
+
 
 @pytest.fixture
 def builder():
@@ -80,6 +82,7 @@ def world():
 # ---------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------
+
 
 def test_build_returns_routing_problem(builder, world):
 
@@ -162,9 +165,7 @@ def test_vehicle_selection(builder, world):
 
 def test_multiple_orders(builder, world):
 
-    world.orders.append(
-        DummyOrder()
-    )
+    world.orders.append(DummyOrder())
 
     world.orders[-1].order_id = "order-2"
     world.orders[-1].pickup_node = 400
@@ -182,6 +183,7 @@ def test_multiple_orders(builder, world):
         250,
         -250,
     ]
+
 
 def test_unavailable_vehicle_not_selected(builder, world):
 

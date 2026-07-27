@@ -88,6 +88,7 @@ def test_matrix_service_empty_locations(matrix_service, mock_world):
     assert result.matrix.shape == (0, 0)
     assert len(result.locations) == 0
 
+
 def test_matrix_service_locations_contents(matrix_service, mock_world):
     """Test that the returned locations preserve their metadata."""
 

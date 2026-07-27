@@ -1,8 +1,6 @@
 from routing import matrix_service, route_builder, or_tools_solver
 
 
-
-
 @traceable(name="Planning Node")
 def planning_node(state):
 
