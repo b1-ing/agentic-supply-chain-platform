@@ -5,7 +5,7 @@ from __future__ import annotations
 import requests
 import os
 from dotenv import load_dotenv
-
+from services.routing.onemap.auth_service import OneMapAuthService
 load_dotenv()
 
 
@@ -19,13 +19,13 @@ class OneMapRoutingService:
             base_url: str = "https://www.onemap.gov.sg",
     ):
         self.base_url = base_url.rstrip("/")
-        self.token = os.getenv("ONEMAP_API_KEY")
+        self.auth = OneMapAuthService()
 
     @property
     def headers(self):
 
         return {
-            "Authorization": self.token,
+            "Authorization": self.auth.access_token(),
         }
 
     ####################################################################
@@ -51,7 +51,20 @@ class OneMapRoutingService:
             headers=self.headers,
             timeout=30,
         )
+        if response.status_code == 401:
 
+            self.auth._authenticate()
+
+            response = requests.get(
+                f"{self.base_url}/api/public/routingsvc/route",
+                params={
+                    "start": f"{start_lat},{start_lon}",
+                    "end": f"{end_lat},{end_lon}",
+                    "routeType": "drive",
+                },
+                headers=self.headers,
+                timeout=30,
+            )
         response.raise_for_status()
 
         return response.json()

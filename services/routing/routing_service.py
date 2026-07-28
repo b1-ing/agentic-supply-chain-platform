@@ -1,4 +1,4 @@
-from models.route.route_plan import RoutePlan
+from models.routing.route_plan import RoutePlan
 from services.routing.matrix_service import MatrixService
 from services.routing.problem_builder import RoutingProblemBuilder
 from services.routing.route_builder import RouteBuilder

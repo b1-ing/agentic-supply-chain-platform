@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import networkx as nx
-
+import polyline
 from models.routing.route_plan import RoutePlan
 from models.routing.route_segment import RouteSegment
 from models.routing.route_stop import RouteStop
@@ -9,7 +9,6 @@ from models.routing.travel_matrix import TravelMatrix
 from models.routing.vehicle_route import VehicleRoute
 from models.vehicles.vehicle import Vehicle
 from models.order.routing_location import RoutingLocation
-from routing import onemap_routing_service
 from services.routing.onemap_routing_service import OneMapRoutingService
 
 class RouteBuilder:
@@ -197,9 +196,8 @@ class RouteBuilder:
             stops[1:],
         ):
             segment = self._build_segment(
-                world,
-                current.location.graph_node,
-                nxt.location.graph_node,
+                current.location,
+                nxt.location,
             )
 
             segments.append(segment)
@@ -232,12 +230,17 @@ class RouteBuilder:
             end_lon=to_location.lon,
         )
 
+        print(route)
+
+        decoded = polyline.decode(
+            route["route_geometry"]
+        )
+
         return RouteSegment(
-            from_node=from_location.graph_node,
-            to_node=to_location.graph_node,
-            geometry=route.geometry,
-            travel_time=route.travel_time,
-            distance=route.distance,
+            geometry=decoded,
+            travel_time=route["route_summary"]["total_time"],
+            distance=route["route_summary"]["total_distance"],
+            instructions=route["route_instructions"]
         )
     ####################################################################
     # Helpers
