@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import networkx as nx
 
 from models.events import TrafficIncident
-from models.incoming_state import IncomingOrder
+from models.order.incoming_order import IncomingOrder
 from models.depot import Depot
 
 from models.vehicles.vehicle import Vehicle
@@ -14,7 +14,7 @@ from models.vehicles.vehicle import Vehicle
 @dataclass
 class WorldState:
     # 1. Non-default arguments MUST go at the very top
-    depots: list[Depot]
+    # depots: list[Depot]
 
     graph: nx.MultiDiGraph = None
     mapping: dict = None

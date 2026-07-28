@@ -3,12 +3,12 @@ from agents.planning_decision_agent import PlanningDecisionAgent
 from services.planning_context_builder import PlanningContextBuilder
 from services.traffic_penalty_service import TrafficPenaltyService
 
-from services.geocoding_service import GeocodingService
+from services.order.geocoding_service import GeocodingService
 from services.graph_snap_service import GraphSnapService
 # from services.compatibility_service import CompatibilityService
 
-from services.problem_builder import RoutingProblemBuilder
-from services.matrix_service import MatrixService
+from routing.problem_builder import RoutingProblemBuilder
+from services.routing.matrix_service import MatrixService
 
 from routing.or_tools_solver import ORToolsSolver
 from routing.route_builder import RouteBuilder

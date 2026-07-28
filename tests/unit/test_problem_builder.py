@@ -1,11 +1,11 @@
 import pytest
 import networkx as nx
 
-from models.routing_problem import RoutingProblem
+from routing.routing_problem import RoutingProblem
 from models.world_state import WorldState
 from models.routing_location import RoutingLocation
 from models.vehicles.vehicle import VehicleStatus
-from services.problem_builder import RoutingProblemBuilder
+from routing.problem_builder import RoutingProblemBuilder
 
 
 # ---------------------------------------------------------------------

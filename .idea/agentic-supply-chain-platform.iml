@@ -7,6 +7,8 @@
       <sourceFolder url="file://$MODULE_DIR$/graphs" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/models" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/venv/Lib/site-packages" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/venv/Lib/site-packages/pandas/tests/io" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

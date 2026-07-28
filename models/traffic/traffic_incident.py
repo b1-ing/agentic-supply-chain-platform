@@ -1,8 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-
+from models.traffic.incident_type import IncidentType
 
 @dataclass
 class TrafficIncident:
@@ -27,5 +27,3 @@ class TrafficIncident:
     end_time: datetime | None
 
     metadata: dict = field(default_factory=dict)
-
-

@@ -1,14 +1,13 @@
-from copy import deepcopy
 from pprint import pprint
-
-from models.order_state import OrderState
-from models.world_state import WorldState
-
-from graphs.nodes.order.assess_order import assess_order
-from graphs.nodes.order.validate_order import validate_order
-from graphs.nodes.order.geocode import geocode_order
-from graphs.nodes.order.snap_to_graph import snap_to_graph
-from graphs.nodes.order.store_order import store_order
+import osmnx as ox
+from models.order.order_state import OrderState
+from models.world.world_state import WorldState
+from services.world.world_manager import world_manager
+from graphs.order.nodes.assess_order import assess_order
+from graphs.order.nodes.validate_order import validate_order
+from graphs.order.nodes.geocode import geocode_order
+from graphs.order.nodes.snap_to_graph import snap_to_graph
+from graphs.order.nodes.store_order import store_order
 
 
 def print_stage(title: str, state: OrderState):
@@ -16,14 +15,30 @@ def print_stage(title: str, state: OrderState):
     print(title)
     print("=" * 80)
 
-    print("\nOrder:")
+    print("\nOrder")
     pprint(state.order)
 
-    print("\nValidation Errors:")
+    print("\nValid")
+    pprint(getattr(state, "valid", None))
+
+    print("\nValidation Errors")
     pprint(getattr(state, "validation_errors", None))
 
-    print("\nValid:")
-    pprint(getattr(state, "valid", None))
+    if getattr(state.order, "pickup_coord", None):
+        print("\nPickup")
+        pprint(state.order.pickup_coord)
+
+    if getattr(state.order, "delivery_coord", None):
+        print("\nDelivery")
+        pprint(state.order.delivery_coord)
+
+    if getattr(state.order, "pickup_node", None):
+        print("\nPickup Node")
+        pprint(state.order.pickup_node)
+
+    if getattr(state.order, "delivery_node", None):
+        print("\nDelivery Node")
+        pprint(state.order.delivery_node)
 
 
 def run_single_test(prompt: str):
@@ -34,45 +49,66 @@ def run_single_test(prompt: str):
     print("#" * 80)
     print(prompt)
 
-    world_state = WorldState()
+    graph = ox.load_graphml("cache/singapore.graphml")
+    mapping = {}
+
+
+    world_manager.initialise(
+        graph=graph,
+        mapping=mapping,        # remove if you've removed depots completely
+        vehicles=[],
+    )
 
     state = OrderState(
         raw_order=prompt,
-        world=world_state,
+        world=world,
     )
 
-    print_stage("Initial State", state)
+    print_stage("Initial", state)
 
-    state = assess_order(state)
-    print_stage("After assess_order()", state)
+    pipeline = [
+        ("assess_order()", assess_order),
+        ("validate_order()", validate_order),
+        ("geocode_order()", geocode_order),
+        ("snap_to_graph()", snap_to_graph),
+        ("store_order()", store_order),
+    ]
 
-    state = validate_order(state)
-    print_stage("After validate_order()", state)
+    for name, node in pipeline:
 
-    if getattr(state, "valid", True):
-        state = geocode_order(state)
-        print_stage("After geocode_order()", state)
+        if name != "validate_order()" and not getattr(state, "valid", True):
+            break
 
-        state = store_order(state)
-        print_stage("After store_order()", state)
+        state = node(state)
+        print_stage(f"After {name}", state)
 
-        return state
-
-    else:
-        print("\nOrder failed validation. Remaining stages skipped.")
+    return state
 
 
 if __name__ == "__main__":
-    test_prompts = [
+
+    prompts = [
         "Deliver 8 pallets of frozen seafood from Jurong Port to Changi Airport before 3 PM.",
         "Transport 500kg of hazardous chemicals from Tuas Port to PSA Pasir Panjang.",
         "Move a fragile MRI scanner from NUH to Singapore General Hospital.",
         "Deliver 20 pallets of electronics from Changi Airfreight Centre to Woodlands.",
         "Pickup furniture at IKEA Alexandra and deliver to Marina Bay Sands tomorrow morning.",
-        "Deliver 50 tonnes of steel beams from Depot Rd to Sentosa.",
+        "Deliver 50 tonnes of steel beams from Depot Road to Sentosa.",
         "Move frozen vaccines from Woodlands to Khoo Teck Puat Hospital before 8am.",
     ]
 
-    for prompt in test_prompts:
+    world = WorldState()
+
+    for prompt in prompts:
+
+        state = OrderState(
+            raw_order=prompt,
+            world=world,
+        )
+
         state = run_single_test(prompt)
-        print(state.world)
+
+        print("\nCurrent World Orders")
+        pprint(state.world.orders_in_progress)
+
+        print("\nTotal Orders:", len(state.world.new_orders))

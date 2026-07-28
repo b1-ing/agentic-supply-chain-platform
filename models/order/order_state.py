@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from models.incoming_state import IncomingOrder
+from models.order.incoming_order import IncomingOrder
 
-from models.world_state import WorldState
+from models.world.world_state import WorldState
 
 
 @dataclass

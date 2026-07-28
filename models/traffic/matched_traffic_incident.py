@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+
 @dataclass
 class MatchedTrafficIncident:
     incident: TrafficIncident

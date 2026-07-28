@@ -1,9 +1,9 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
-from models.incoming_state import IncomingOrder
+from models.order.incoming_order import IncomingOrder
 
-from models.order_state import OrderState
+from models.order.order_state import OrderState
 
 
 SYSTEM_PROMPT = """
@@ -45,7 +45,7 @@ Rules:
 - Do not use "origin", "destination", "pickup_location", or "delivery_location".
 - Use the field names exactly as above.
 - Unknown values must be null.
-- Return only JSON.
+Return ONLY raw, valid JSON. Do not write any markdown code fences like ```json or trailing text.
 
 """
 
