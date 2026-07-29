@@ -65,8 +65,16 @@ class RouteBuilder:
                 vehicle,
                 route,
             )
+            if len(vehicle_route.segments) == 0:
+                continue
 
             vehicle_routes.append(vehicle_route)
+
+        vehicle_routes = [
+            route
+            for route in vehicle_routes
+            if route.total_distance > 0
+        ]
 
         return RoutePlan(
             routes=vehicle_routes,

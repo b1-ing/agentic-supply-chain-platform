@@ -1,6 +1,6 @@
 from services.osm_service import OSMService
 from services.traffic_service import TrafficService
-from services.road_matcher import RoadMatcher
+from traffic.road_matcher import RoadMatcher
 
 from engine.constraint_engine import ConstraintEngine
 from repository.constraint_repository import ConstraintRepository

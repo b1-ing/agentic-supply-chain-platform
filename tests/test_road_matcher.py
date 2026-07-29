@@ -3,7 +3,7 @@ import os
 import osmnx as ox
 from services.lta_service import LTADataMallClient
 from services.traffic_service import TrafficService
-from services.road_matcher import RoadMatcher
+from traffic.road_matcher import RoadMatcher
 
 CACHE_FILE_PATH = "cache/singapore.graphml"
 

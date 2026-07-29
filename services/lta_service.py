@@ -13,6 +13,7 @@ import asyncio
 import math
 import geopandas as gpd
 import json
+from six import print_
 
 load_dotenv()
 
@@ -116,6 +117,7 @@ class LTADataMallClient:
         results = []
         skip = 0
         url = f"{self.base_url}/{endpoint}"
+        print(url)
 
         while skip < 500:  # REVERT TO TRUE AFTER TESTING
             params = {"$skip": skip} if skip > 0 else {}

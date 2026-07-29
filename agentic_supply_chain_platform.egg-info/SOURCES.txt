@@ -16,6 +16,7 @@ graphs/order/nodes/snap_to_graph.py
 graphs/order/nodes/store_order.py
 graphs/order/nodes/validate_order.py
 graphs/planning/planning_graph.py
+graphs/traffic/graph.py
 models/assessment.py
 models/constraint.py
 models/constraint_engine.py
@@ -34,6 +35,7 @@ models/routing/travel_matrix.py
 models/routing/vehicle_route.py
 models/traffic/incident_type.py
 models/traffic/matched_traffic_incident.py
+models/traffic/road_speed_band.py
 models/traffic/traffic_incident.py
 models/vehicles/hazmat_truck.py
 models/vehicles/refrigerated_truck.py
@@ -49,7 +51,6 @@ services/cache.py
 services/context_builder.py
 services/lta_service.py
 services/osm_service.py
-services/road_matcher.py
 services/tomtom_service.py
 services/traffic_service.py
 services/weather_service.py
@@ -65,9 +66,11 @@ services/routing/valhalla_service.py
 services/routing/onemap/auth_service.py
 services/traffic/graph_update_service.py
 services/traffic/penalty_policy.py
+services/traffic/road_matcher.py
 services/traffic/traffic_incident_matcher.py
 services/traffic/traffic_ingestion_service.py
 services/traffic/traffic_penalty_service.py
+services/traffic/traffic_pipeline.py
 services/world/world_manager.py
 tests/test_lta_live.py
 tests/test_planning_agent.py
