@@ -1,11 +1,13 @@
 from datetime import datetime
 from typing import Optional
-
+from enum import Enum
+from models.routing.compatible_vehicle import CompatibleVehicle
 from pydantic import BaseModel, Field
 
 
 class IncomingOrder(BaseModel):
     """Order extracted from natural language."""
+
 
     pickup_address: str = Field(description="Pickup address or location.")
 
@@ -30,6 +32,8 @@ class IncomingOrder(BaseModel):
     pickup_node: Optional[int] = None
 
     delivery_node: Optional[int] = None
+
+    height_m: Optional[float] = Field(default=None, description="Height in metres.")
 
     weight_kg: Optional[float] = Field(default=None, description="Weight in kilograms.")
 
@@ -65,3 +69,17 @@ class IncomingOrder(BaseModel):
     notes: Optional[str] = Field(
         default=None, description="Additional customer instructions."
     )
+
+    assigned_vehicle: Optional[str] = Field(
+        default=None, description="Vehicle assigned to this order."
+    )
+
+
+class OrderStatus(Enum):
+    NEW = "NEW"
+    ASSIGNED = "ASSIGNED"
+    PICKED_UP = "PICKED_UP"
+    DELIVERING = "DELIVERING"
+    DELIVERED = "DELIVERED"
+    CANCELLED = "CANCELLED"
+    UNSERVICEABLE = "UNSERVICEABLE"

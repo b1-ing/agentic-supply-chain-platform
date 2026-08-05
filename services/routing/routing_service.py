@@ -38,6 +38,8 @@ class RoutingService:
             problem.locations,
         )
 
+        print(problem.pickup_delivery_pairs)
+
         routes = self.solver.solve(
             matrix=matrix.matrix,
             starts=problem.starts,
@@ -49,6 +51,7 @@ class RoutingService:
 
         if routes is None:
             raise RuntimeError("No feasible routing solution found.")
+
 
         return self.route_builder.build(
             world=world,

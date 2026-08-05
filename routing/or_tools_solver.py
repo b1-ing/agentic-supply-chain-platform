@@ -3,58 +3,18 @@ from ortools.constraint_solver import routing_enums_pb2
 
 
 class ORToolsSolver:
+
     def solve(
-        self,
-        matrix,
-        starts,
-        ends,
-        demands,
-        capacities,
-        pickup_delivery_pairs,
-        time_limit: int = 10,
+            self,
+            matrix,
+            starts,
+            ends,
+            demands,
+            capacities,
+            pickup_delivery_pairs,
+            vehicle_constraints=None,
+            time_limit: int = 10,
     ):
-        """
-        Solve a Capacitated Vehicle Routing Problem (CVRP).
-
-        Parameters:
-
-        matrix
-            NxN travel-time matrix.
-
-        starts
-            Matrix index where each vehicle starts.
-
-        ends
-            Matrix index where each vehicle ends.
-
-        demands
-            Demand for every matrix node.
-
-        capacities
-            Capacity of each vehicle.
-
-        Returns
-        -------
-        list[list[int]]
-
-            One list of matrix indices per vehicle.
-
-            Example:
-
-            [
-                [0, 3, 5, 0],
-                [0, 1, 2, 4, 0],
-            ]
-        """
-
-        print("matrix type:", type(matrix))
-        print("matrix dtype:", getattr(matrix, "dtype", None))
-        print("matrix shape:", getattr(matrix, "shape", None))
-
-        print("starts:", starts, [type(x) for x in starts])
-        print("ends:", ends, [type(x) for x in ends])
-        print("demands:", demands, [type(x) for x in demands])
-        print("capacities:", capacities, [type(x) for x in capacities])
 
         manager = pywrapcp.RoutingIndexManager(
             len(matrix),
@@ -63,25 +23,12 @@ class ORToolsSolver:
             ends,
         )
 
-        print("Number of nodes:", manager.GetNumberOfNodes())
-        print("Number of vehicles:", len(capacities))
-        print("Starts:", starts)
-        print("Ends:", ends)
-
-        for i in range(manager.GetNumberOfNodes()):
-            try:
-                print(i, "->", manager.IndexToNode(i))
-            except Exception as e:
-                print(i, e)
-
         routing = pywrapcp.RoutingModel(manager)
 
-        # --------------------------------------------------
-        # Travel cost callback
-        # --------------------------------------------------
-        """
-        Transit callback: a function that takes any pair of locations and returns the distance between them.
-        """
+
+        ############################################################
+        # Travel time
+        ############################################################
 
         def transit_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
@@ -89,88 +36,147 @@ class ORToolsSolver:
 
             return int(matrix[from_node][to_node])
 
-        transit_callback_index = routing.RegisterTransitCallback(transit_callback)
-
-        routing.AddDimension(
-            transit_callback_index,
-            9000,  # slack_max: Maximum waiting time allowed at a location
-            86400,  # capacity: Maximum total time per vehicle route (e.g., 24 hours)
-            False,  # fix_start_cumul_to_zero: Force vehicle start time to 0
-            "Time",  # name: The exact string key needed for GetDimensionOrDie()
+        transit_index = routing.RegisterTransitCallback(
+            transit_callback
         )
 
-        time_dimension = routing.GetDimensionOrDie("Time")
+        routing.SetArcCostEvaluatorOfAllVehicles(
+            transit_index
+        )
 
-        for pickup, delivery in pickup_delivery_pairs:
+        ############################################################
+        # Capacity
+        ############################################################
+
+        def demand_callback(index):
+
+            node = manager.IndexToNode(index)
+
+            return demands[node]
+
+        demand_index = routing.RegisterUnaryTransitCallback(
+            demand_callback
+        )
+
+        routing.AddDimensionWithVehicleCapacity(
+            demand_index,
+            0,
+            capacities,
+            True,
+            "Capacity",
+        )
+
+        ############################################################
+        # Time
+        ############################################################
+
+        routing.AddDimension(
+            transit_index,
+            9000,
+            86400,
+            False,
+            "Time",
+        )
+
+        time_dimension = routing.GetDimensionOrDie(
+            "Time"
+        )
+
+        ############################################################
+        # Pickup / Delivery
+        ############################################################
+
+        for pair in pickup_delivery_pairs:
+
+            pickup = pair.pickup
+            delivery = pair.delivery
+
             pickup_idx = manager.NodeToIndex(pickup)
             delivery_idx = manager.NodeToIndex(delivery)
 
-            routing.AddPickupAndDelivery(pickup_idx, delivery_idx)
+            routing.AddPickupAndDelivery(
+                pickup_idx,
+                delivery_idx,
+            )
 
             routing.solver().Add(
-                routing.VehicleVar(pickup_idx) == routing.VehicleVar(delivery_idx)
+                routing.VehicleVar(pickup_idx)
+                ==
+                routing.VehicleVar(delivery_idx)
             )
+
             routing.solver().Add(
                 time_dimension.CumulVar(pickup_idx)
-                <= time_dimension.CumulVar(delivery_idx)
+                <=
+                time_dimension.CumulVar(delivery_idx)
             )
 
-        print(demands)
-        print(type(demands))
-        print(len(demands))
+            if len(pair.allowed_vehicles) == 1:
 
-        """
-        The arc cost evaluator tells the solver how to calculate the cost of travel between any two locations.
-        In other words, the cost of the edge (or arc) joining them in the graph for the problem.
-        """
-        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+                routing.solver().Add(
+                    routing.VehicleVar(pickup_idx)
+                    ==
+                    pair.allowed_vehicles[0]
+                )
 
-        # --------------------------------------------------
-        # Capacity constraint
-        # --------------------------------------------------
+                routing.solver().Add(
+                    routing.VehicleVar(delivery_idx)
+                    ==
+                    pair.allowed_vehicles[0]
+                )
 
-        #         def demand_callback(index):
-        #
-        #             node = manager.IndexToNode(int(index))
-        #
-        #             return demands[node]
-        #
-        #         demand_callback_index = routing.RegisterUnaryTransitCallback(
-        #             demand_callback
-        #         )
-        #
-        #         routing.AddDimensionWithVehicleCapacity(
-        #             demand_callback_index,
-        #             0,                  # slack
-        #             capacities,
-        #             True,
-        #             "Capacity",
-        #         )
+            ########################################################
+            # Vehicle compatibility
+            ########################################################
 
-        # --------------------------------------------------
-        # Search parameters
-        # --------------------------------------------------
+            if vehicle_constraints is not None:
 
-        search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+                allowed = pair["allowed_vehicles"]
 
-        search_parameters.first_solution_strategy = (
+                routing.VehicleVar(
+                    pickup_idx
+                ).SetValues(allowed)
+
+                routing.VehicleVar(
+                    delivery_idx
+                ).SetValues(allowed)
+
+        ############################################################
+        # Search
+        ############################################################
+
+        search = pywrapcp.DefaultRoutingSearchParameters()
+
+        search.first_solution_strategy = (
             routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
         )
 
-        search_parameters.local_search_metaheuristic = (
+        search.local_search_metaheuristic = (
             routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
         )
 
-        search_parameters.time_limit.seconds = time_limit
+        search.time_limit.seconds = time_limit
 
-        # --------------------------------------------------
+        ############################################################
         # Solve
-        # --------------------------------------------------
+        ############################################################
 
-        solution = routing.SolveWithParameters(search_parameters)
+        solution = routing.SolveWithParameters(search)
 
         if solution is None:
             return None
+
+        for pair in pickup_delivery_pairs:
+
+            pickup_idx = manager.NodeToIndex(pair.pickup)
+
+            vehicle = solution.Value(
+                routing.VehicleVar(pickup_idx)
+            )
+
+            print(
+                f"{pair.order_id} -> vehicle {vehicle}"
+            )
 
         return self._extract_routes(
             manager,
@@ -178,30 +184,36 @@ class ORToolsSolver:
             solution,
         )
 
+    ################################################################
+
     def _extract_routes(
-        self,
-        manager,
-        routing,
-        solution,
+            self,
+            manager,
+            routing,
+            solution,
     ):
-        """
-        Convert OR-Tools solution into matrix indices.
-        """
 
         routes = []
 
-        for vehicle_id in range(routing.vehicles()):
+        for vehicle in range(routing.vehicles()):
+
             route = []
 
-            index = routing.Start(vehicle_id)
+            index = routing.Start(vehicle)
 
             while not routing.IsEnd(index):
-                print("routing index:", index)
-                route.append(manager.IndexToNode(index))
 
-                index = solution.Value(routing.NextVar(index))
-            print("end routing index:", index)
-            route.append(manager.IndexToNode(index))
+                route.append(
+                    manager.IndexToNode(index)
+                )
+
+                index = solution.Value(
+                    routing.NextVar(index)
+                )
+
+            route.append(
+                manager.IndexToNode(index)
+            )
 
             routes.append(route)
 

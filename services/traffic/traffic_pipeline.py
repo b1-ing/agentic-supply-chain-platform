@@ -7,6 +7,7 @@ from services.world.world_manager import world_manager
 from services.lta_service import LTADataMallClient
 
 from ingestion.traffic_incidents import TrafficIncidentService
+from ingestion.traffic_incidents import TrafficIncidentService
 from ingestion.speed_bands import SpeedBandService
 # from ingestion.lta.roadworks import RoadworksService
 

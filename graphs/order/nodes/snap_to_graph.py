@@ -1,8 +1,9 @@
 import osmnx as ox
 from services.world.world_manager import world_manager
+from langsmith import traceable
 
 
-
+@traceable(name="Snap To Graph")
 def snap_to_graph(state):
 
     world = world_manager.get_world()

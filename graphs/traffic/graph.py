@@ -56,33 +56,51 @@ class TrafficGraphService:
     # Speed Bands
     ####################################################################
 
-    def _apply_speed_bands(
-            self,
-            graph,
-            speed_bands,
-    ):
+def _apply_speed_bands(
+        self,
+        graph,
+        speed_bands,
+):
 
-        for band in speed_bands:
+    for band in speed_bands:
 
-            if band.edge is None:
-                continue
+        edges = self.speed_band_mapping.get_edges(
+            band.link_id,
+        )
 
-            u, v, k = band.edge
+        if not edges:
+            continue
+
+        multiplier = {
+            1: 3.0,
+            2: 2.2,
+            3: 1.5,
+            4: 1.2,
+            5: 1.0,
+        }.get(
+            band.speed_band,
+            1.0,
+        )
+
+        for u, v, k in edges:
 
             data = graph[u][v][k]
 
-            multiplier = {
-                1: 3.0,
-                2: 2.2,
-                3: 1.5,
-                4: 1.2,
-                5: 1.0,
-            }.get(
-                band.speed_band,
-                1.0,
+            #
+            # Always use the free-flow travel time.
+            #
+
+            base = data["base_travel_time"]
+
+            traffic_penalty = data.get(
+                "traffic_penalty",
+                0,
             )
 
-            data["travel_time"] *= multiplier
+            data["travel_time"] = (
+                    base * multiplier
+                    + traffic_penalty
+            )
 
     ####################################################################
     # Incidents

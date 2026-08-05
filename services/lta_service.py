@@ -116,6 +116,7 @@ class LTADataMallClient:
         """Handles the 500-record pagination limit automatically via OData ?$skip"""
         results = []
         skip = 0
+        page = 1
         url = f"{self.base_url}/{endpoint}"
         print(url)
 
@@ -134,13 +135,18 @@ class LTADataMallClient:
                 data = response.json()
                 records = data.get("value", [])
 
+                print(f"[*] Page {page}: fetched {len(records)} records (skip={skip})")
+
                 if not records:
+                    print("[*] No more records.")
                     break
 
                 results.extend(records)
 
                 if len(records) < 500:
-                    break  # Fetched the last page
+                    print("[+] Last page reached.")
+                    break
+
 
                 skip += 500
                 time.sleep(1)  # Small throttle to respect rate limits

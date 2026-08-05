@@ -2,7 +2,8 @@ from models.routing.routing_problem import RoutingProblem
 from models.world.world_state import WorldState
 from models.order.routing_location import RoutingLocation
 from models.vehicles.vehicle import Vehicle, VehicleStatus
-
+from models.routing.pickup_delivery_pair import PickupDeliveryPair
+from models.order.incoming_order import OrderStatus
 
 class RoutingProblemBuilder:
 
@@ -39,6 +40,7 @@ class RoutingProblemBuilder:
 
         pickup_delivery_pairs = self._build_pickup_delivery_pairs(
             world,
+            vehicles,
             locations,
         )
 
@@ -55,17 +57,131 @@ class RoutingProblemBuilder:
     ####################################################################
     # Vehicles
     ####################################################################
+####################################################################
+# Vehicles
+####################################################################
 
     def _select_vehicles(
             self,
             world: WorldState,
     ) -> list[Vehicle]:
 
-        return [
-            vehicle
-            for vehicle in world.vehicles
-            if vehicle.status == VehicleStatus.IDLE
-        ]
+        # Return every vehicle.
+        # Compatibility + availability are handled later.
+        return world.vehicles
+
+
+    def _build_pickup_delivery_pairs(
+            self,
+            world: WorldState,
+            vehicles: list[Vehicle],
+            locations: list[RoutingLocation],
+    ) -> list[PickupDeliveryPair]:
+
+        pickups = {}
+        deliveries = {}
+
+        for location in locations:
+
+            if location.kind == "pickup":
+                pickups[location.order_id] = location.matrix_index
+
+            elif location.kind == "delivery":
+                deliveries[location.order_id] = location.matrix_index
+
+        pairs = []
+
+        for order in world.new_orders:
+
+            compatible = []
+            idle_compatible = []
+
+            for index, vehicle in enumerate(vehicles):
+
+                reason = self._failure_reason(vehicle, order)
+
+                if reason is not None:
+                    continue
+
+                compatible.append(vehicle)
+
+                if vehicle.status == VehicleStatus.IDLE:
+                    idle_compatible.append(index)
+
+            #
+            # Save compatibility for the Planning Agent
+            #
+
+            order.compatible_vehicles = [
+                {
+                    "id": v.vehicle_id,
+                    "status": v.status.value,
+                    "remaining_route_minutes": getattr(
+                        v,
+                        "remaining_route_minutes",
+                        0,
+                    ),
+                }
+                for v in compatible
+            ]
+
+            #
+            # No compatible vehicle exists
+            #
+
+            if not compatible:
+
+                world.unserviceable_orders.append(order)
+                continue
+
+            #
+            # Compatible vehicles exist but all are busy
+            #
+
+            if not idle_compatible:
+
+                world.pending_orders.append(order)
+                continue
+
+            #
+            # Route using idle compatible vehicles
+            #
+
+            pairs.append(
+                PickupDeliveryPair(
+                    order_id=order.order_id,
+                    pickup=pickups[order.order_id],
+                    delivery=deliveries[order.order_id],
+                    allowed_vehicles=idle_compatible,
+                )
+            )
+
+        return pairs
+    def _failure_reason(
+            self,
+            vehicle,
+            order,
+    ) -> str | None:
+
+        if order.refrigerated and not vehicle.refrigerated:
+            return "Vehicle is not refrigerated."
+
+        if (
+                order.height_m
+                and order.height_m > vehicle.height_m
+        ):
+            return "Vehicle height exceeded."
+
+        if (
+                order.weight_kg
+                and order.weight_kg > vehicle.max_weight_kg
+        ):
+            return "Vehicle weight exceeded."
+
+        if order.hazardous and not vehicle.hazardous_certified:
+            return "Vehicle is not hazardous-certified."
+
+        return None
 
     ####################################################################
     # Locations
@@ -217,28 +333,28 @@ class RoutingProblemBuilder:
     ####################################################################
     # Pickup / Delivery
     ####################################################################
-
-    def _build_pickup_delivery_pairs(
-            self,
-            world: WorldState,
-            locations: list[RoutingLocation],
-    ) -> list[tuple[int, int]]:
-
-        pickups = {}
-        deliveries = {}
-
-        for location in locations:
-
-            if location.kind == "pickup":
-                pickups[location.order_id] = location.matrix_index
-
-            elif location.kind == "delivery":
-                deliveries[location.order_id] = location.matrix_index
-
-        return [
-            (
-                pickups[order.order_id],
-                deliveries[order.order_id],
-            )
-            for order in world.new_orders
-        ]
+    #
+    # def _build_pickup_delivery_pairs(
+    #         self,
+    #         world: WorldState,
+    #         locations: list[RoutingLocation],
+    # ) -> list[tuple[int, int]]:
+    #
+    #     pickups = {}
+    #     deliveries = {}
+    #
+    #     for location in locations:
+    #
+    #         if location.kind == "pickup":
+    #             pickups[location.order_id] = location.matrix_index
+    #
+    #         elif location.kind == "delivery":
+    #             deliveries[location.order_id] = location.matrix_index
+    #
+    #     return [
+    #         (
+    #             pickups[order.order_id],
+    #             deliveries[order.order_id],
+    #         )
+    #         for order in world.new_orders
+    #     ]

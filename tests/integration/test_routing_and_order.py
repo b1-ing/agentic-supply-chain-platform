@@ -95,7 +95,7 @@ def test_full_pipeline():
     world = initialise_world()
 
     prompts = [
-        "Deliver 8 pallets of frozen seafood from Jurong Port to Changi Airport before 3 PM.",
+        "Deliver 8 pallets of frozen seafood from Jurong Po rt to Changi Airport before 3 PM.",
         # "Transport 500kg of hazardous chemicals from Tuas Port to PSA Pasir Panjang.",
         # "Move a fragile MRI scanner from NUH to Singapore General Hospital.",
         "Deliver 20 pallets of electronics from Changi Airfreight Centre to Woodlands.",

@@ -1,7 +1,7 @@
 import asyncio
 import networkx as nx
 
-from agents.planning_decision_agent import PlanningDecisionAgent
+from agents.planning.planning_decision_agent import PlanningDecisionAgent
 
 from models.world_state import WorldState
 from models.depot import Depot

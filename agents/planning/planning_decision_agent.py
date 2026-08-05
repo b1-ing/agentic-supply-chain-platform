@@ -1,9 +1,9 @@
 import json
-
+import asyncio
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from models.planning_decision import PlanningDecision
+from models.world.planning_decision import PlanningDecision
 
 
 SYSTEM_PROMPT = """
@@ -119,13 +119,13 @@ class PlanningDecisionAgent:
     def _summarise_world(self, world):
 
         return {
-            "depots": [
-                {
-                    "id": depot.depot_id,
-                    "graph_node": depot.graph_node,
-                }
-                for depot in world.depots
-            ],
+            # "depots": [
+            #     {
+            #         "id": depot.depot_id,
+            #         "graph_node": depot.graph_node,
+            #     }
+            #     for depot in world.depots
+            # ],
             "vehicles": [
                 {
                     "id": vehicle.vehicle_id,

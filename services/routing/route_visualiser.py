@@ -3,7 +3,7 @@ from pathlib import Path
 import folium
 
 from models.routing.route_plan import RoutePlan
-
+from folium.plugins import PolyLineTextPath
 
 class RouteVisualiser:
     """
@@ -52,14 +52,21 @@ class RouteVisualiser:
                 if not segment.geometry:
                     continue
 
-                folium.PolyLine(
+                line = folium.PolyLine(
                     locations=segment.geometry,
                     color=colour,
                     weight=5,
                     opacity=0.8,
                     tooltip=route.vehicle_id,
                 ).add_to(m)
-
+                # --- Add Direction A   rrows ---
+                PolyLineTextPath(
+                    line,
+                    " ► ",               # Arrow character (or '►', '➜', '>>')
+                    repeat=True,          # Repeat along the segment length
+                    offset=6,             # Vertical offset from the polyline
+                    attributes={"fill": colour, "font-size": "14px", "font-weight": "bold"},
+                ).add_to(m)
             #
             # Draw stops
             #

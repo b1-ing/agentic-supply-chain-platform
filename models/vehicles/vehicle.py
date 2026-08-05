@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
-
+from models.routing.vehicle_route import VehicleRoute
 
 class VehicleStatus(str, Enum):
     IDLE = "IDLE"
@@ -19,6 +19,8 @@ class Vehicle(BaseModel, ABC):
     current_node: Optional[int] = None
     current_lat: Optional[float] = None
     current_lon: Optional[float] = None
+
+    current_route: VehicleRoute | None = None
 
     max_weight_kg: float
     max_volume_m3: float

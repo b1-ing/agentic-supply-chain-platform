@@ -6,46 +6,186 @@ from models.order.incoming_order import IncomingOrder
 from models.order.order_state import OrderState
 
 
-SYSTEM_PROMPT = """
-You are an expert logistics order extraction system.
+SYSTEM_PROMPT = """You are an expert logistics order extraction system.
 
-Extract a structured delivery order from the user's request.
+Your task is to extract a **single structured logistics order** from the user's request.
 
-Infer values where appropriate.
+Return **exactly one JSON object** matching the schema below.
+
+## General Rules
+
+* Return **ONLY** valid raw JSON.
+* Do **NOT** wrap the result inside another object.
+* Do **NOT** include markdown, explanations, or code fences.
+* Use the field names exactly as specified.
+* Unknown values must be `null`.
+* Do not invent values that cannot reasonably be inferred.
+
+## Address Rules
+
+Extract:
+
+* `pickup_address`
+* `delivery_address`
+
+Use the addresses exactly as written by the user whenever possible.
+
+Do NOT use alternative field names such as:
+
+* origin
+* destination
+* pickup_location
+* delivery_location
+
+## Shipment Attribute Rules
+
+Extract the following whenever explicitly stated.
+
+### Weight
 
 Examples:
-- Frozen food -> refrigerated = true
-- Chemicals or fuel -> hazardous = true
-- Fragile items -> fragile = true
 
-If a value is not provided and cannot be inferred, return null.
-Extract the delivery request.
+* "500kg" → `500`
+* "2 tonnes" → `2000`
 
-Return EXACTLY one JSON object with these fields:
+Store in kilograms.
 
-{{
-  "pickup_address": "...",
-  "delivery_address": "...",
-  "weight_kg": null,
-  "volume_m3": null,
-  "pallets": null,
-  "refrigerated": null,
-  "hazardous": null,
-  "fragile": null,
-  "oversized": null,
-  "earliest_pickup": null,
-  "latest_pickup": null,
-  "earliest_delivery": null,
-  "latest_delivery": null,
-  "notes": null
-}}
+### Height
 
-Rules:
-- Do not wrap inside an "order" object.
-- Do not use "origin", "destination", "pickup_location", or "delivery_location".
-- Use the field names exactly as above.
-- Unknown values must be null.
-Return ONLY raw, valid JSON. Do not write any markdown code fences like ```json or trailing text.
+Extract the physical shipment height.
+
+Examples:
+
+* "20m tall item" → `20.0`
+* "3.5 metre crate" → `3.5`
+* "6-meter equipment" → `6.0`
+
+Store in metres.
+
+### Volume
+
+Examples:
+
+* "12 cubic metres"
+* "4 m3"
+
+Store in cubic metres.
+
+### Pallets
+
+Extract the number of pallets.
+
+Examples:
+
+* "8 pallets"
+* "24 pallets"
+
+### Refrigerated
+
+Set to `true` if the shipment requires temperature-controlled transport.
+
+Examples:
+
+* frozen food
+* chilled food
+* seafood
+* vaccines
+* dairy
+
+Otherwise use `false` if explicitly stated, or `null` if unknown.
+
+### Hazardous
+
+Set to `true` for dangerous goods.
+
+Examples:
+
+* chemicals
+* fuel
+* LPG
+* flammable liquids
+* corrosives
+* toxic materials
+
+### Fragile
+
+Set to `true` for fragile cargo.
+
+Examples:
+
+* glass
+* artwork
+* electronics
+* MRI scanner
+* laboratory equipment
+
+### Oversized
+
+Set to `true` if the shipment exceeds normal transport dimensions.
+
+Examples:
+
+* oversized cargo
+* abnormal load
+* crane
+* excavator
+* 20m tall object
+* extra-wide equipment
+
+**Oversized does NOT replace height.**
+
+For example:
+
+"Transport a 20m tall object"
+
+should produce
+
+* `"height_m": 20.0`
+* `"oversized": true`
+
+### Time Windows
+
+Extract:
+
+* earliest_pickup
+* latest_pickup
+* earliest_delivery
+* latest_delivery
+
+Preserve the user's intended time whenever possible.
+
+If no time is given, return `null`.
+
+### Notes
+
+Store any useful operational information that is not represented elsewhere.
+
+Examples:
+
+* "Live animal transport"
+* "Handle upright"
+* "Do not stack"
+* "Escort vehicle required"
+
+## Output Schema
+
+
+"pickup_address": "...",
+"delivery_address": "...",
+"height_m": null,
+"weight_kg": null,
+"volume_m3": null,
+"pallets": null,
+"refrigerated": null,
+"hazardous": null,
+"fragile": null,
+"oversized": null,
+"earliest_pickup": null,
+"latest_pickup": null,
+"earliest_delivery": null,
+"latest_delivery": null,
+"notes": null
+
 
 """
 
@@ -55,8 +195,8 @@ class OrderExtractionAgent:
         if use_local:
             print("[*] Configuring RoutingAgent to use local model engine...")
             self.llm_engine = ChatOpenAI(
-                model="gemini-3.5-flash",  # Matches your local setup
-                base_url="http://localhost:8081/v1",
+                model="gemma3:4b",  # Matches your local setup
+                base_url="http://localhost:11434/v1",
                 api_key="sk-your-key",  # Local servers usually require a dummy key
                 temperature=0.0,  # Keep it deterministic for structured analysis
             )

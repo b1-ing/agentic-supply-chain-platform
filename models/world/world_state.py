@@ -6,6 +6,7 @@ import networkx as nx
 from models.events import TrafficIncident
 from models.order.incoming_order import IncomingOrder
 from models.depot import Depot
+from models.routing.compatibility_result import CompatibilityResult
 
 from models.vehicles.vehicle import Vehicle
 # from models.mission import Mission
@@ -30,9 +31,14 @@ class WorldState:
     constraints: list = field(default_factory=list)
     routes: list = field(default_factory=list)
 
+    compatibility_results: dict[str, CompatibilityResult] = field(
+        default_factory=dict
+    )
+
     new_orders: list[IncomingOrder] = field(default_factory=list)
     orders_in_progress: list[IncomingOrder] = field(default_factory=list)
     cancelled_orders: list[IncomingOrder] = field(default_factory=list)
+    unserviceable_orders: list[IncomingOrder] = field(default_factory=list)
 
     # 3. Primitive fields using the correct type annotation syntax with default values
     recommend_replan: bool = False
