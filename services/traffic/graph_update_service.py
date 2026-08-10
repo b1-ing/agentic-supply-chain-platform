@@ -22,6 +22,14 @@ class GraphUpdateService:
 
         self.penalty_service = TrafficPenaltyService()
 
+        self.speed_band_mapping_path = Path(
+            speed_band_mapping_path
+        )
+
+        self.speed_band_mapping = (
+            self._load_speed_band_mapping()
+        )
+
     ####################################################################
     # Public
     ####################################################################

@@ -1,7 +1,7 @@
 # app/initialise.py
 
 import osmnx as ox
-
+from pathlib import Path
 from models.world.world_state import WorldState
 from models.depot import Depot
 
@@ -22,8 +22,24 @@ def initialise_world() -> WorldState:
     ############################################################
 
     print("[Initialise] Loading Singapore graph...")
-
-    graph = ox.load_graphml(GRAPH_PATH)
+    print("[*] Initializing OpenStreetMap environment for Singapore...")
+    graph_file_path = Path("cache/singapore.graphml")
+    if graph_file_path.is_file():
+        graph = ox.graph = ox.load_graphml(filepath=graph_file_path)
+    else:
+        ox.settings.useful_tags_way.extend(
+            [
+                "maxheight",  # Max vehicle height allowed
+                "maxweight",  # Max vehicle weight allowed
+                "maxwidth",  # Max vehicle width allowed
+                "bridge",  # Indicates if edge is a bridge ('yes' or 'no')
+                "lanes",  # Number of lanes on the roadway
+            ]
+        )
+        graph = ox.graph_from_place("Singapore", network_type="drive")
+        graph = ox.add_edge_speeds(graph)
+        graph = ox.add_edge_travel_times(graph)
+        ox.save_graphml(graph, filepath="cache/singapore.graphml")
 
     ############################################################
     # Depot(s)

@@ -120,7 +120,7 @@ class LTADataMallClient:
         url = f"{self.base_url}/{endpoint}"
         print(url)
 
-        while skip < 500:  # REVERT TO TRUE AFTER TESTING
+        while skip < 1000:  # REVERT TO TRUE AFTER TESTING
             params = {"$skip": skip} if skip > 0 else {}
             try:
                 response = requests.get(

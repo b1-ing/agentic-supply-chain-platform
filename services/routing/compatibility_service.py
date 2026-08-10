@@ -4,35 +4,13 @@ from dataclasses import dataclass
 
 from models.world.world_state import WorldState
 from models.order.incoming_order import IncomingOrder
-from models.vehicles.vehicle import Vehicle
+from models.vehicles.vehicle import Vehicle, VehicleStatus
+from models.routing.compatible_vehicle import CompatibleVehicle
+from models.routing.incompatible_vehicle import IncompatibleVehicle
+from models.routing.compatibility_result import CompatibilityResult, CompatibilityStatus
 
+import networkx as nx
 
-@dataclass(slots=True)
-class CompatibleVehicle:
-    vehicle_id: str
-    status: str
-    current_node: int | None
-
-    remaining_capacity_kg: float
-
-    remaining_route_minutes: float
-
-    distance_to_pickup_minutes: float | None
-
-
-@dataclass(slots=True)
-class IncompatibleVehicle:
-    vehicle_id: str
-    reason: str
-
-
-@dataclass(slots=True)
-class CompatibilityResult:
-    order_id: str
-
-    compatible: list[CompatibleVehicle]
-
-    incompatible: list[IncompatibleVehicle]
 
 
 class CompatibilityService:
@@ -84,8 +62,31 @@ class CompatibilityService:
                     )
                 )
 
+        idle = [
+            v for v in compatible
+            if v.status == VehicleStatus.IDLE.value
+        ]
+
+        if idle:
+            status = CompatibilityStatus.ROUTABLE
+        elif compatible:
+            status = CompatibilityStatus.WAITING
+        else:
+            status = CompatibilityStatus.UNSERVICEABLE
+
+        allowed_vehicle_indices = [
+            i
+            for i, vehicle in enumerate(world.vehicles)
+            if self._failure_reason(vehicle, order) is None
+            and vehicle.status == VehicleStatus.IDLE
+        ]
+
+
+
         return CompatibilityResult(
             order_id=order.order_id,
+            status=status,
+            allowed_vehicle_indices=allowed_vehicle_indices,
             compatible=compatible,
             incompatible=incompatible,
         )
@@ -172,28 +173,30 @@ class CompatibilityService:
 
         return remaining / 60
 
+
+
     def _distance_to_pickup(
-            self,
-            world: WorldState,
-            vehicle: Vehicle,
-            order: IncomingOrder,
-    ) -> float | None:
+           self,
+           world: WorldState,
+           vehicle: Vehicle,
+           order: IncomingOrder,
+       ) -> float | None:
 
-        if (
-                vehicle.current_node is None
-                or order.pickup_node is None
-        ):
-            return None
+           if (
+               vehicle.current_node is None
+               or order.pickup_node is None
+           ):
+               return None
 
-        try:
+           try:
+               travel_time = nx.shortest_path_length(
+                   world.graph,
+                   source=vehicle.current_node,
+                   target=order.pickup_node,
+                   weight="travel_time",
+               )
 
-            length = world.graph[
-                vehicle.current_node
-            ][
-                order.pickup_node
-            ]
+               return travel_time / 60
 
-        except Exception:
-            return None
-
-        return None
+           except nx.NetworkXNoPath:
+               return None

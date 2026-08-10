@@ -4,7 +4,7 @@ from models.order.routing_location import RoutingLocation
 from models.vehicles.vehicle import Vehicle, VehicleStatus
 from models.routing.pickup_delivery_pair import PickupDeliveryPair
 from models.order.incoming_order import OrderStatus
-
+from models.routing.compatibility_result import CompatibilityStatus
 class RoutingProblemBuilder:
 
     def build(
@@ -40,9 +40,10 @@ class RoutingProblemBuilder:
 
         pickup_delivery_pairs = self._build_pickup_delivery_pairs(
             world,
-            vehicles,
             locations,
         )
+
+
 
         return RoutingProblem(
             vehicles=vehicles,
@@ -70,89 +71,41 @@ class RoutingProblemBuilder:
         # Compatibility + availability are handled later.
         return world.vehicles
 
-
     def _build_pickup_delivery_pairs(
-            self,
-            world: WorldState,
-            vehicles: list[Vehicle],
-            locations: list[RoutingLocation],
+        self,
+        world: WorldState,
+        locations: list[RoutingLocation],
     ) -> list[PickupDeliveryPair]:
 
-        pickups = {}
-        deliveries = {}
+        pickups = {
+            l.order_id: l.matrix_index
+            for l in locations
+            if l.kind == "pickup"
+        }
 
-        for location in locations:
-
-            if location.kind == "pickup":
-                pickups[location.order_id] = location.matrix_index
-
-            elif location.kind == "delivery":
-                deliveries[location.order_id] = location.matrix_index
+        deliveries = {
+            l.order_id: l.matrix_index
+            for l in locations
+            if l.kind == "delivery"
+        }
 
         pairs = []
 
         for order in world.new_orders:
 
-            compatible = []
-            idle_compatible = []
+            compatibility = world.compatibility_results[order.order_id]
 
-            for index, vehicle in enumerate(vehicles):
+            print(compatibility)
 
-                reason = self._failure_reason(vehicle, order)
-
-                if reason is not None:
-                    continue
-
-                compatible.append(vehicle)
-
-                if vehicle.status == VehicleStatus.IDLE:
-                    idle_compatible.append(index)
-
-            #
-            # Save compatibility for the Planning Agent
-            #
-
-            order.compatible_vehicles = [
-                {
-                    "id": v.vehicle_id,
-                    "status": v.status.value,
-                    "remaining_route_minutes": getattr(
-                        v,
-                        "remaining_route_minutes",
-                        0,
-                    ),
-                }
-                for v in compatible
-            ]
-
-            #
-            # No compatible vehicle exists
-            #
-
-            if not compatible:
-
-                world.unserviceable_orders.append(order)
+            if compatibility.status != CompatibilityStatus.ROUTABLE:
                 continue
-
-            #
-            # Compatible vehicles exist but all are busy
-            #
-
-            if not idle_compatible:
-
-                world.pending_orders.append(order)
-                continue
-
-            #
-            # Route using idle compatible vehicles
-            #
 
             pairs.append(
                 PickupDeliveryPair(
                     order_id=order.order_id,
                     pickup=pickups[order.order_id],
                     delivery=deliveries[order.order_id],
-                    allowed_vehicles=idle_compatible,
+                    allowed_vehicles=compatibility.allowed_vehicle_indices,
                 )
             )
 

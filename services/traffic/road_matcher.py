@@ -1,131 +1,448 @@
+
 # services/traffic/road_matcher.py
 
-from __future__ import annotations
+import json
+from pathlib import Path
 
-import osmnx as ox
+import networkx as nx
+from shapely.geometry import LineString, Point
+from shapely.strtree import STRtree
+
+from models.traffic.matched_traffic_incident import (
+    MatchedTrafficIncident,
+    MatchType,
+)
 
 
 class RoadMatcher:
-    """
-    Maps real-world traffic events onto the OSM road network.
 
-    Responsibilities
-    ----------------
-    - Find the nearest road edge to an event.
-    - Convert traffic events into matched graph events.
-    """
+    def __init__(
+            self,
+            speed_band_mapping_path: str | Path = (
+                "cache/speed_band_mapping.json"
+            ),
+    ):
 
-    ####################################################################
-    # Edge lookup
-    ####################################################################
+        ############################################################
+        # Incident spatial index
+        ############################################################
+
+        self.tree = None
+        self.edges = []
+        self.graph = None
+
+        ############################################################
+        # LTA SpeedBand cache
+        ############################################################
+
+        self.speed_band_mapping_path = Path(
+            speed_band_mapping_path
+        )
+
+        self.speed_band_mapping = (
+            self._load_speed_band_mapping()
+        )
+
+    ################################################################
+    # SpeedBand cache
+    ################################################################
+
+    def _load_speed_band_mapping(self):
+
+        if not self.speed_band_mapping_path.exists():
+
+            raise FileNotFoundError(
+                "SpeedBand mapping cache not found: "
+                f"{self.speed_band_mapping_path}"
+            )
+
+        print(
+            "[*] Loading SpeedBand → OSM cache..."
+        )
+
+        with open(
+                self.speed_band_mapping_path,
+                "r",
+                encoding="utf-8",
+        ) as f:
+
+            mapping = json.load(f)
+
+        print(
+            f"[+] Loaded {len(mapping):,} "
+            "SpeedBand mappings."
+        )
+
+        return mapping
+
+    ################################################################
+    # Build spatial index
+    ################################################################
+    #
+    # Used for traffic incidents.
+    #
+    # SpeedBands DO NOT use this index.
+    #
+    ################################################################
+
+    def build_index(
+            self,
+            graph: nx.MultiDiGraph,
+    ):
+
+        self.graph = graph
+
+        self.edges = []
+        geometries = []
+
+        for u, v, key, data in graph.edges(
+                keys=True,
+                data=True,
+        ):
+
+            geometry = data.get(
+                "geometry"
+            )
+
+            #
+            # Some OSM edges may not have
+            # explicit geometry.
+            #
+
+            if geometry is None:
+
+                u_data = graph.nodes[u]
+                v_data = graph.nodes[v]
+
+                geometry = LineString(
+                    [
+                        (
+                            u_data["x"],
+                            u_data["y"],
+                        ),
+                        (
+                            v_data["x"],
+                            v_data["y"],
+                        ),
+                    ]
+                )
+
+            geometries.append(
+                geometry
+            )
+
+            self.edges.append(
+                (
+                    u,
+                    v,
+                    key,
+                )
+            )
+
+        self.tree = STRtree(
+            geometries
+        )
+
+        print(
+            f"[+] Built incident spatial index "
+            f"for {len(self.edges):,} OSM edges."
+        )
+
+    ################################################################
+    # Nearest edge
+    ################################################################
 
     def nearest_edge(
             self,
             graph,
-            lat: float,
-            lon: float,
-    ) -> tuple[int, int, int]:
-        """
-        Returns the nearest OSM edge (u, v, key)
-        to a latitude/longitude coordinate.
-        """
+            latitude,
+            longitude,
+    ):
 
-        return ox.distance.nearest_edges(
-            graph,
-            X=lon,
-            Y=lat,
+        #
+        # Build the spatial index once.
+        #
+
+        if (
+                self.tree is None
+                or self.graph is not graph
+        ):
+
+            self.build_index(
+                graph
+            )
+
+        point = Point(
+            longitude,
+            latitude,
         )
 
-    ####################################################################
-    # Generic matcher
-    ####################################################################
+        geometry_index = (
+            self.tree.nearest(
+                point
+            )
+        )
 
-    def _match(
+        if geometry_index is None:
+            return None
+
+        return self.edges[
+            int(geometry_index)
+        ]
+
+    ################################################################
+    # Match incidents
+    ################################################################
+
+    def match_incidents(
             self,
-            graph,
-            events,
-            lat_attr: str,
-            lon_attr: str,
-    ) -> list[dict]:
-        """
-        Generic matcher used by all traffic event types.
-        """
+            graph: nx.MultiDiGraph,
+            incidents,
+    ):
 
         matched = []
 
-        for event in events:
+        for incident in incidents:
 
-            lat = getattr(event, lat_attr)
-            lon = getattr(event, lon_attr)
+            ########################################################
+            # Coordinate-based incident
+            ########################################################
 
-            edge = self.nearest_edge(
-                graph,
-                lat,
-                lon,
-            )
+            if (
+                    incident.latitude is not None
+                    and incident.longitude is not None
+            ):
+
+                edge = self.nearest_edge(
+                    graph,
+                    incident.latitude,
+                    incident.longitude,
+                )
+
+                if edge is None:
+                    continue
+
+                matched.append(
+                    MatchedTrafficIncident(
+                        incident=incident,
+                        affected_edges=[
+                            edge
+                        ],
+                        match_type=MatchType.COORDINATE,
+                        confidence=1.0,
+                    )
+                )
+
+                continue
+
+            ########################################################
+            # Road-name incident
+            ########################################################
+
+            if incident.road_name:
+
+                edges = self._match_by_road_name(
+                    graph,
+                    incident.road_name,
+                )
+
+                matched.append(
+                    MatchedTrafficIncident(
+                        incident=incident,
+                        affected_edges=edges,
+                        match_type=MatchType.ROAD_NAME,
+                        confidence=0.95 if edges else 0.0,
+                        matched_road=incident.road_name,
+                    )
+                )
+
+                continue
+
+            ########################################################
+            # Unknown incident
+            ########################################################
 
             matched.append(
-                {
-                    "event": event,
-                    "edge": edge,
-                }
+                MatchedTrafficIncident(
+                    incident=incident,
+                    affected_edges=[],
+                    match_type=MatchType.UNKNOWN,
+                    confidence=0.0,
+                )
             )
 
         return matched
 
-    ####################################################################
-    # Traffic incidents
-    ####################################################################
-
-    def match_incidents(
-            self,
-            graph,
-            incidents,
-    ) -> list[dict]:
-
-        return self._match(
-            graph,
-            incidents,
-            lat_attr="latitude",
-            lon_attr="longitude",
-        )
-
-    ####################################################################
-    # Roadworks
-    ####################################################################
-
-    def match_roadworks(
-            self,
-            graph,
-            roadworks,
-    ) -> list[dict]:
-
-        return self._match(
-            graph,
-            roadworks,
-            lat_attr="latitude",
-            lon_attr="longitude",
-        )
-
-    ####################################################################
-    # Speed bands
-    ####################################################################
+    ################################################################
+    # Match SpeedBands
+    ################################################################
+    #
+    # IMPORTANT:
+    #
+    # This does NOT perform spatial matching.
+    #
+    # It simply:
+    #
+    #     LTA link_id
+    #          ↓
+    #     JSON cache
+    #          ↓
+    #     OSM edges
+    #
+    ################################################################
 
     def match_speed_bands(
             self,
-            graph,
+            graph: nx.MultiDiGraph,
             speed_bands,
-    ) -> list[dict]:
-        """
-        Speed bands represent road segments rather than points.
+    ):
 
-        For now, match using the segment's start coordinate.
-        Later this can be upgraded to spatial line matching.
-        """
+        matched = []
 
-        return self._match(
+
+        for band in speed_bands:
+
+            link_id = str(
+                band.link_id
+            )
+
+            cached = (
+                self.speed_band_mapping.get(
+                    link_id
+                )
+            )
+
+            ########################################################
+            # No mapping
+            ########################################################
+
+            if cached is None:
+
+                print(
+                    f"[MISS] No cached mapping "
+                    f"for LTA SpeedBand {link_id}"
+                )
+
+                continue
+
+            ########################################################
+            # Validate cached edges
+            ########################################################
+
+            affected_edges = []
+
+            for edge in cached.get(
+                    "edges",
+                    [],
+            ):
+
+                #
+                # JSON stores tuples as lists.
+                #
+
+                u, v, key = edge
+
+                if not graph.has_edge(
+                    u,
+                    v,
+                    key,
+                ):
+
+                    print(
+                        f"[MISS] Cached edge "
+                        f"{edge} does not exist "
+                        f"for LTA {link_id}"
+                    )
+
+                    continue
+
+                affected_edges.append(
+                    (
+                        u,
+                        v,
+                        key,
+                    )
+                )
+
+            ########################################################
+            # No valid edges
+            ########################################################
+
+            if not affected_edges:
+
+                print(
+                    f"[MISS] LTA {link_id} "
+                    "has no valid OSM edges"
+                )
+
+                continue
+
+            ########################################################
+            # Create matched object
+            ########################################################
+
+            matched.append(
+                MatchedTrafficIncident(
+                    incident=band,
+                    affected_edges=affected_edges,
+                    match_type=MatchType.SPEED_BAND,
+                    confidence=1.0,
+                )
+            )
+
+        return matched
+
+    ################################################################
+    # Road-name matching
+    ################################################################
+
+    def _match_by_road_name(
+            self,
             graph,
-            speed_bands,
-            lat_attr="start_lat",
-            lon_attr="start_lon",
-        )
+            road_name,
+    ):
+
+        affected = []
+
+        target = road_name.lower()
+
+        for u, v, key, data in graph.edges(
+                keys=True,
+                data=True,
+        ):
+
+            name = data.get(
+                "name"
+            )
+
+            if name is None:
+                continue
+
+            if isinstance(
+                    name,
+                    list,
+            ):
+
+                names = [
+                    str(n).lower()
+                    for n in name
+                ]
+
+            else:
+
+                names = [
+                    str(name).lower()
+                ]
+
+            if target in names:
+
+                affected.append(
+                    (
+                        u,
+                        v,
+                        key,
+                    )
+                )
+
+        return affected
+

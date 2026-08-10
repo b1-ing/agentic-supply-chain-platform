@@ -70,10 +70,6 @@ class TrafficIngestionService:
             self.lta.fetch_incidents()
         )
 
-        incidents.extend(
-            self.tomtom.fetch_incidents()
-        )
-
         ###############################################################
         # Analyse incidents
         ###############################################################

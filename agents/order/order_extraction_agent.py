@@ -39,7 +39,10 @@ Do NOT use alternative field names such as:
 
 ## Shipment Attribute Rules
 
-Extract the following whenever explicitly stated.
+You are expected to infer transport constraints using common logistics knowledge.
+
+Do not wait for the user to explicitly mention refrigeration, hazardous materials,
+fragility, or oversized transport if these are obvious from the cargo.
 
 ### Weight
 

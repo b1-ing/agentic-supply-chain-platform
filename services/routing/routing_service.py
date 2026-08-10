@@ -3,7 +3,7 @@ from services.routing.matrix_service import MatrixService
 from services.routing.problem_builder import RoutingProblemBuilder
 from services.routing.route_builder import RouteBuilder
 from routing.or_tools_solver import ORToolsSolver
-
+from services.routing.compatibility_service import CompatibilityService
 
 class RoutingService:
     """
@@ -23,15 +23,31 @@ class RoutingService:
         self.matrix_service = MatrixService()
         self.solver = ORToolsSolver()
         self.route_builder = RouteBuilder()
+        self.compatibility_service = CompatibilityService()
 
     def plan_routes(
             self,
             world,
     ) -> RoutePlan:
 
+
+        order = world.new_orders[-1]   # or return it from the graph
+
+        compatibility = self.compatibility_service.evaluate(
+            world,
+            order,
+        )
+
+        world.compatibility_results[order.order_id] = compatibility
+
+
+        print(world)
+
         problem = self.problem_builder.build(
             world,
         )
+
+
 
         matrix = self.matrix_service.build(
             world,

@@ -2,19 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+from models.traffic.traffic_incident import TrafficIncident
 
-
-@dataclass
-class MatchedTrafficIncident:
-    incident: TrafficIncident
-
-    affected_edges: list[tuple[int, int, int]]
-
-    match_type: MatchType
-
-    confidence: float
-
-    radius_m: float
 
 
 class MatchType(Enum):
@@ -27,3 +16,22 @@ class MatchType(Enum):
     JUNCTION = "junction"
 
     MANUAL = "manual"
+
+    SPEED_BAND = "speed_band"
+
+
+@dataclass
+class MatchedTrafficIncident:
+    incident: TrafficIncident
+
+    affected_edges: list[tuple[int, int, int]]
+
+    match_type: MatchType
+
+    confidence: float
+
+    radius_m: float | None = None
+
+    matched_road: str | None = None
+
+    radius_m: float

@@ -2,7 +2,7 @@
 
 
 from services.traffic.road_matcher import RoadMatcher
-from graphs.traffic.graph import TrafficGraphService
+from services.traffic.graph import TrafficGraphService
 from services.world.world_manager import world_manager
 from services.lta_service import LTADataMallClient
 
@@ -57,10 +57,10 @@ class TrafficPipeline:
         # Match onto graph
         ###############################################################
 
-        matched_incidents = self.matcher.match_incidents(
-            world.graph,
-            incidents,
-        )
+#         matched_incidents = self.matcher.match_incidents(
+#             world.graph,
+#             incidents,
+#         )
 
         matched_speed_bands = self.matcher.match_speed_bands(
             world.graph,
@@ -79,7 +79,8 @@ class TrafficPipeline:
         self.graph_service.update(
             world=world,
             speed_bands=matched_speed_bands,
-            incidents=matched_incidents,
+#             incidents=matched_incidents,
+            incidents=[],
             # matched_roadworks=matched_roadworks,
         )
 
@@ -89,9 +90,9 @@ class TrafficPipeline:
 
         world.traffic_events = incidents
         world.matched_events = (
-                matched_incidents
-                + matched_speed_bands
-                + matched_roadworks
+#                 matched_incidents
+                matched_speed_bands
+#                 + matched_roadworks
         )
 
         return world

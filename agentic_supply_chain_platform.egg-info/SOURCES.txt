@@ -4,11 +4,12 @@ agentic_supply_chain_platform.egg-info/PKG-INFO
 agentic_supply_chain_platform.egg-info/SOURCES.txt
 agentic_supply_chain_platform.egg-info/dependency_links.txt
 agentic_supply_chain_platform.egg-info/top_level.txt
-agents/planning_decision_agent.py
 agents/order/order_extraction_agent.py
 agents/planning/planning_agent.py
+agents/planning/planning_decision_agent.py
 agents/planning/routing_agent.py
 agents/traffic/traffic_analysis_agent.py
+app/initialise.py
 app/main.py
 app/runtime.py
 graphs/order/order_graph.py
@@ -31,6 +32,10 @@ models/penalty.py
 models/order/incoming_order.py
 models/order/order_state.py
 models/order/routing_location.py
+models/routing/compatibility_result.py
+models/routing/compatible_vehicle.py
+models/routing/incompatible_vehicle.py
+models/routing/pickup_delivery_pair.py
 models/routing/route_plan.py
 models/routing/route_segment.py
 models/routing/route_stop.py
@@ -61,6 +66,7 @@ services/traffic_service.py
 services/weather_service.py
 services/order/geocoding_service.py
 services/order/graph_snap_service.py
+services/routing/compatibility_service.py
 services/routing/matrix_service.py
 services/routing/onemap_routing_service.py
 services/routing/problem_builder.py

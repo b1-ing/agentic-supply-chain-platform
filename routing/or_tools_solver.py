@@ -88,11 +88,8 @@ class ORToolsSolver:
 
         for pair in pickup_delivery_pairs:
 
-            pickup = pair.pickup
-            delivery = pair.delivery
-
-            pickup_idx = manager.NodeToIndex(pickup)
-            delivery_idx = manager.NodeToIndex(delivery)
+            pickup_idx = manager.NodeToIndex(pair.pickup)
+            delivery_idx = manager.NodeToIndex(pair.delivery)
 
             routing.AddPickupAndDelivery(
                 pickup_idx,
@@ -101,45 +98,21 @@ class ORToolsSolver:
 
             routing.solver().Add(
                 routing.VehicleVar(pickup_idx)
-                ==
-                routing.VehicleVar(delivery_idx)
+                == routing.VehicleVar(delivery_idx)
             )
 
             routing.solver().Add(
                 time_dimension.CumulVar(pickup_idx)
-                <=
-                time_dimension.CumulVar(delivery_idx)
+                <= time_dimension.CumulVar(delivery_idx)
             )
 
-            if len(pair.allowed_vehicles) == 1:
+            routing.VehicleVar(
+                pickup_idx
+            ).SetValues(pair.allowed_vehicles)
 
-                routing.solver().Add(
-                    routing.VehicleVar(pickup_idx)
-                    ==
-                    pair.allowed_vehicles[0]
-                )
-
-                routing.solver().Add(
-                    routing.VehicleVar(delivery_idx)
-                    ==
-                    pair.allowed_vehicles[0]
-                )
-
-            ########################################################
-            # Vehicle compatibility
-            ########################################################
-
-            if vehicle_constraints is not None:
-
-                allowed = pair["allowed_vehicles"]
-
-                routing.VehicleVar(
-                    pickup_idx
-                ).SetValues(allowed)
-
-                routing.VehicleVar(
-                    delivery_idx
-                ).SetValues(allowed)
+            routing.VehicleVar(
+                delivery_idx
+            ).SetValues(pair.allowed_vehicles)
 
         ############################################################
         # Search

@@ -86,6 +86,16 @@ class Runtime:
             if decision.should_replan:
                 route_plan = self.routing.plan_routes(world)
 
+                for route in route_plan.routes:
+                    print(f"\n{route.vehicle_id}")
+
+                    for stop in route.stops:
+                        print(
+                            stop.location.kind,
+                            stop.location.order_id,
+                            stop.location.matrix_index,
+                        )
+
                 self._commit_routes(
                     world,
                     route_plan,

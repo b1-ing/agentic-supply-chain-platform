@@ -21,6 +21,7 @@ async def bootstrap():
                 "maxwidth",  # Max vehicle width allowed
                 "bridge",  # Indicates if edge is a bridge ('yes' or 'no')
                 "lanes",  # Number of lanes on the roadway
+                "base_travel_time"
             ]
         )
         graph = ox.graph_from_place("Singapore", network_type="drive")
