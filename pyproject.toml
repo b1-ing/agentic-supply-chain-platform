@@ -11,4 +11,4 @@ pythonpath = ["."]
 
 # Add this section below to handle the flat-layout multi-package setup:
 [tool.setuptools.packages.find]
-include = ["app*", "cache*", "debug*", "agents*", "graphs*", "models*", "routing*", "services*", "ingestion*", "workflow*", "repository*"]
+include = ["api*", "app*", "cache*", "debug*", "agents*", "graphs*", "models*", "routing*", "services*", "ingestion*", "workflow*", "repository*"]

@@ -74,8 +74,8 @@ class PlanningDecisionAgent:
             print("[*] Configuring PlanningDecisionAgent to use local model...")
 
             self.llm_engine = ChatOpenAI(
-                model="gemini-3.5-flash",
-                base_url="http://localhost:8081/v1",
+                model="gemma3:4b",
+                base_url="http://localhost:11434/v1",
                 api_key="sk-your-key",
                 temperature=0.0,
             )

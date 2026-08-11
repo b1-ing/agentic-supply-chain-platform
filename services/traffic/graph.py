@@ -142,29 +142,28 @@ class TrafficGraphService:
             edges = entry["edges"]
 
             ############################################################
-            # Determine traffic multiplier
-            ############################################################
-
-            multiplier = {
-                1: 3.0,
-                2: 2.2,
-                3: 1.5,
-                4: 1.2,
-                5: 1.0,
-            }.get(
-                band.incident.speed_band,
-                1.0,
-            )
-
-            ############################################################
             # Apply to every mapped OSM edge
             ############################################################
-
             for u, v, k in edges:
 
                 data = graph[u][v][k]
 
-                print(data)
+
+                maxspeed = data["maxspeed"]
+
+                if isinstance(maxspeed, list):
+                    maxspeed = float(maxspeed[0])
+                else:
+                    maxspeed = float(maxspeed)
+
+                current_speed = float(band.incident.metadata["MaximumSpeed"])
+
+                multiplier = maxspeed / current_speed
+
+
+                ############################################################
+                # Determine traffic multiplier
+                ############################################################
 
                 #
                 # Always calculate from free-flow travel time.
@@ -181,6 +180,8 @@ class TrafficGraphService:
                     base * multiplier
                     + traffic_penalty
                 )
+
+                print(data)
 
 
             print(
