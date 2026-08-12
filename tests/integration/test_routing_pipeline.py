@@ -15,6 +15,7 @@ from services.routing.route_builder import RouteBuilder
 # Helpers
 # ---------------------------------------------------------
 
+
 def build_test_graph() -> nx.MultiDiGraph:
 
     graph = nx.MultiDiGraph()
@@ -63,7 +64,6 @@ def build_world(num_vehicles=1) -> WorldState:
     vehicles = []
 
     for i in range(num_vehicles):
-
         truck = StandardTruck(
             vehicle_id=f"truck-{i}",
         )
@@ -72,7 +72,6 @@ def build_world(num_vehicles=1) -> WorldState:
         # Update these field names to match your Vehicle model.
         #
         truck.current_node = 0
-
 
         vehicles.append(truck)
 
@@ -134,6 +133,7 @@ def solve(world: WorldState):
 # Tests
 # ---------------------------------------------------------
 
+
 def test_full_routing_pipeline():
 
     world = build_world()
@@ -176,7 +176,6 @@ def test_pickups_before_deliveries():
     route = route_plan.routes[0]
 
     for order in world.new_orders:
-
         pickup = next(
             i
             for i, stop in enumerate(route.stops)

@@ -22,22 +22,18 @@ class GraphUpdateService:
 
         self.penalty_service = TrafficPenaltyService()
 
-        self.speed_band_mapping_path = Path(
-            speed_band_mapping_path
-        )
+        self.speed_band_mapping_path = Path(speed_band_mapping_path)
 
-        self.speed_band_mapping = (
-            self._load_speed_band_mapping()
-        )
+        self.speed_band_mapping = self._load_speed_band_mapping()
 
     ####################################################################
     # Public
     ####################################################################
 
     def update(
-            self,
-            graph: nx.MultiDiGraph,
-            matched_incidents: list,
+        self,
+        graph: nx.MultiDiGraph,
+        matched_incidents: list,
     ) -> nx.MultiDiGraph:
         """
         Returns an updated graph with all penalties applied.

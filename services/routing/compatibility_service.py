@@ -12,27 +12,23 @@ from models.routing.compatibility_result import CompatibilityResult, Compatibili
 import networkx as nx
 
 
-
 class CompatibilityService:
-
     def evaluate(
-            self,
-            world: WorldState,
-            order: IncomingOrder,
+        self,
+        world: WorldState,
+        order: IncomingOrder,
     ) -> CompatibilityResult:
 
         compatible = []
         incompatible = []
 
         for vehicle in world.vehicles:
-
             reason = self._failure_reason(
                 vehicle,
                 order,
             )
 
             if reason is None:
-
                 compatible.append(
                     CompatibleVehicle(
                         vehicle_id=vehicle.vehicle_id,
@@ -54,7 +50,6 @@ class CompatibilityService:
                 )
 
             else:
-
                 incompatible.append(
                     IncompatibleVehicle(
                         vehicle_id=vehicle.vehicle_id,
@@ -62,10 +57,7 @@ class CompatibilityService:
                     )
                 )
 
-        idle = [
-            v for v in compatible
-            if v.status == VehicleStatus.IDLE.value
-        ]
+        idle = [v for v in compatible if v.status == VehicleStatus.IDLE.value]
 
         if idle:
             status = CompatibilityStatus.ROUTABLE
@@ -81,8 +73,6 @@ class CompatibilityService:
             and vehicle.status == VehicleStatus.IDLE
         ]
 
-
-
         return CompatibilityResult(
             order_id=order.order_id,
             status=status,
@@ -96,27 +86,21 @@ class CompatibilityService:
     ####################################################################
 
     def _failure_reason(
-            self,
-            vehicle: Vehicle,
-            order: IncomingOrder,
+        self,
+        vehicle: Vehicle,
+        order: IncomingOrder,
     ) -> str | None:
 
         if order.refrigerated and not vehicle.refrigerated:
             return "Vehicle is not refrigerated."
 
-        if (
-                order.height_m
-                and order.height_m > vehicle.height_m
-        ):
+        if order.height_m and order.height_m > vehicle.height_m:
             return (
                 f"Order height ({order.height_m}m) "
                 f"exceeds vehicle height ({vehicle.height_m}m)."
             )
 
-        if (
-                order.weight_kg
-                and order.weight_kg > vehicle.max_weight_kg
-        ):
+        if order.weight_kg and order.weight_kg > vehicle.max_weight_kg:
             return (
                 f"Order weight ({order.weight_kg}kg) "
                 f"exceeds vehicle capacity ({vehicle.max_weight_kg}kg)."
@@ -132,8 +116,8 @@ class CompatibilityService:
     ####################################################################
 
     def _remaining_capacity(
-            self,
-            vehicle: Vehicle,
+        self,
+        vehicle: Vehicle,
     ) -> float:
 
         return getattr(
@@ -143,17 +127,13 @@ class CompatibilityService:
         )
 
     def _remaining_route_minutes(
-            self,
-            world: WorldState,
-            vehicle: Vehicle,
+        self,
+        world: WorldState,
+        vehicle: Vehicle,
     ) -> float:
 
         route = next(
-            (
-                r
-                for r in world.routes
-                if r.vehicle_id == vehicle.vehicle_id
-            ),
+            (r for r in world.routes if r.vehicle_id == vehicle.vehicle_id),
             None,
         )
 
@@ -169,34 +149,29 @@ class CompatibilityService:
         remaining = max(
             route.total_travel_time - elapsed,
             0,
-            )
+        )
 
         return remaining / 60
 
-
-
     def _distance_to_pickup(
-           self,
-           world: WorldState,
-           vehicle: Vehicle,
-           order: IncomingOrder,
-       ) -> float | None:
+        self,
+        world: WorldState,
+        vehicle: Vehicle,
+        order: IncomingOrder,
+    ) -> float | None:
 
-           if (
-               vehicle.current_node is None
-               or order.pickup_node is None
-           ):
-               return None
+        if vehicle.current_node is None or order.pickup_node is None:
+            return None
 
-           try:
-               travel_time = nx.shortest_path_length(
-                   world.graph,
-                   source=vehicle.current_node,
-                   target=order.pickup_node,
-                   weight="travel_time",
-               )
+        try:
+            travel_time = nx.shortest_path_length(
+                world.graph,
+                source=vehicle.current_node,
+                target=order.pickup_node,
+                weight="travel_time",
+            )
 
-               return travel_time / 60
+            return travel_time / 60
 
-           except nx.NetworkXNoPath:
-               return None
+        except nx.NetworkXNoPath:
+            return None

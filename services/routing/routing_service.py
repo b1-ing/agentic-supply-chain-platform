@@ -1,9 +1,12 @@
 from models.routing.route_plan import RoutePlan
 from services.routing.matrix_service import MatrixService
+
 from services.routing.problem_builder import RoutingProblemBuilder
 from services.routing.route_builder import RouteBuilder
 from routing.or_tools_solver import ORToolsSolver
 from services.routing.compatibility_service import CompatibilityService
+from models.routing.compatibility_result import CompatibilityStatus
+
 
 class RoutingService:
     """
@@ -26,35 +29,35 @@ class RoutingService:
         self.compatibility_service = CompatibilityService()
 
     def plan_routes(
-            self,
-            world,
+        self,
+        world,
     ) -> RoutePlan:
 
+        for order in list(world.new_orders):
 
-        order = world.new_orders[-1]   # or return it from the graph
+            compatibility = self.compatibility_service.evaluate(
+                world,
+                order,
+            )
 
-        compatibility = self.compatibility_service.evaluate(
-            world,
-            order,
-        )
+            world.compatibility_results[order.order_id] = compatibility
 
-        world.compatibility_results[order.order_id] = compatibility
-
-
-        print(world)
+            if compatibility.status == CompatibilityStatus.UNSERVICEABLE:
+                world.new_orders.remove(order)
+                world.unserviceable_orders.append(order)
+                return
+            elif compatibility.status == CompatibilityStatus.WAITING:
+                return
 
         problem = self.problem_builder.build(
             world,
         )
-
-
 
         matrix = self.matrix_service.build(
             world,
             problem.locations,
         )
 
-        print(problem.pickup_delivery_pairs)
 
         routes = self.solver.solve(
             matrix=matrix.matrix,
@@ -67,7 +70,6 @@ class RoutingService:
 
         if routes is None:
             raise RuntimeError("No feasible routing solution found.")
-
 
         return self.route_builder.build(
             world=world,

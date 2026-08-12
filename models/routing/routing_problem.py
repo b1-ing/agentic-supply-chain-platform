@@ -4,9 +4,9 @@ from models.order.routing_location import RoutingLocation
 from models.vehicles.vehicle import Vehicle
 from models.routing.pickup_delivery_pair import PickupDeliveryPair
 
+
 @dataclass(slots=True)
 class RoutingProblem:
-
     locations: list[RoutingLocation]
 
     vehicles: list[Vehicle]

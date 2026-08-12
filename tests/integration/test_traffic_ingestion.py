@@ -12,9 +12,7 @@ CACHE_FILE = "cache/singapore.graphml"
 def initialise_world():
 
     if not os.path.exists(CACHE_FILE):
-        raise FileNotFoundError(
-            f"Missing graph cache: {CACHE_FILE}"
-        )
+        raise FileNotFoundError(f"Missing graph cache: {CACHE_FILE}")
 
     graph = ox.load_graphml(CACHE_FILE)
 
@@ -83,7 +81,6 @@ def test_full_traffic_pipeline():
     closed_edges = 0
 
     for _, _, _, data in world.graph.edges(keys=True, data=True):
-
         if "traffic_level" in data:
             traffic_edges += 1
 

@@ -1,6 +1,7 @@
 from services.order.geocoding_service import GeocodingService
 from langsmith import traceable
 
+
 @traceable(name="Geocode")
 def geocode_order(state):
 

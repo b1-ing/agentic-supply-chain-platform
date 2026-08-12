@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Penalty:
-
     #
     # Additional delay (seconds)
     #
@@ -64,7 +63,6 @@ class PenaltyPolicy:
         ###############################################################
 
         if incident_type == "accident":
-
             return Penalty(
                 delay_seconds=self._scale(
                     severity,
@@ -81,7 +79,6 @@ class PenaltyPolicy:
         ###############################################################
 
         if incident_type == "congestion":
-
             return Penalty(
                 delay_seconds=self._scale(
                     severity,
@@ -98,7 +95,6 @@ class PenaltyPolicy:
         ###############################################################
 
         if incident_type == "roadworks":
-
             return Penalty(
                 delay_seconds=self._scale(
                     severity,
@@ -115,7 +111,6 @@ class PenaltyPolicy:
         ###############################################################
 
         if incident_type == "closure":
-
             return Penalty(
                 delay_seconds=self.MAX_DELAY_SECONDS,
                 radius_m=25,
@@ -125,7 +120,6 @@ class PenaltyPolicy:
         ###############################################################
 
         if incident_type == "flood":
-
             return Penalty(
                 delay_seconds=self._scale(
                     severity,
@@ -156,8 +150,8 @@ class PenaltyPolicy:
     ####################################################################
 
     def penalty_seconds(
-            self,
-            incident,
+        self,
+        incident,
     ) -> float:
         """
         Convenience helper used by TrafficPenaltyService.
@@ -172,9 +166,9 @@ class PenaltyPolicy:
     ####################################################################
 
     def clamp(
-            self,
-            base_time: float,
-            penalty: float,
+        self,
+        base_time: float,
+        penalty: float,
     ) -> float:
         """
         Clamp a penalty so the travel time never exceeds
@@ -184,20 +178,20 @@ class PenaltyPolicy:
         max_allowed = min(
             base_time * self.MAX_MULTIPLIER,
             base_time + self.MAX_DELAY_SECONDS,
-            )
+        )
 
         return min(
             penalty,
             max_allowed - base_time,
-            )
+        )
 
     ####################################################################
 
     @staticmethod
     def _scale(
-            severity: float,
-            minimum: float,
-            maximum: float,
+        severity: float,
+        minimum: float,
+        maximum: float,
     ) -> float:
 
         severity = max(

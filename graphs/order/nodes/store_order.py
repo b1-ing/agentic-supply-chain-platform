@@ -1,5 +1,6 @@
 from langsmith import traceable
 
+
 @traceable(name="Store Order")
 def store_order(state):
 

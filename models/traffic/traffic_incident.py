@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Optional
 from models.traffic.incident_type import IncidentType
 
+
 @dataclass
 class TrafficIncident:
     incident_id: str

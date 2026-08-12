@@ -7,6 +7,7 @@ from models.traffic.traffic_incident import TrafficIncident
 from models.traffic.road_speed_band import RoadSpeedBand
 import json
 
+
 class TrafficGraphService:
     """
     Applies live traffic information onto the routing graph.
@@ -20,10 +21,8 @@ class TrafficGraphService:
     """
 
     def __init__(
-            self,
-            speed_band_mapping_path: str | Path = (
-                "cache/speed_band_mapping.json"
-            ),
+        self,
+        speed_band_mapping_path: str | Path = ("cache/speed_band_mapping.json"),
     ):
 
         ############################################################
@@ -38,19 +37,15 @@ class TrafficGraphService:
         # LTA SpeedBand cache
         ############################################################
 
-        self.speed_band_mapping_path = Path(
-            speed_band_mapping_path
-        )
+        self.speed_band_mapping_path = Path(speed_band_mapping_path)
 
-        self.speed_band_mapping = (
-            self._load_speed_band_mapping()
-        )
+        self.speed_band_mapping = self._load_speed_band_mapping()
 
     def update(
-            self,
-            world: WorldState,
-            speed_bands: list[RoadSpeedBand],
-            incidents: list[TrafficIncident],
+        self,
+        world: WorldState,
+        speed_bands: list[RoadSpeedBand],
+        incidents: list[TrafficIncident],
     ):
         graph = world.graph
 
@@ -75,31 +70,22 @@ class TrafficGraphService:
     def _load_speed_band_mapping(self):
 
         if not self.speed_band_mapping_path.exists():
-
             raise FileNotFoundError(
-                "SpeedBand mapping cache not found: "
-                f"{self.speed_band_mapping_path}"
+                f"SpeedBand mapping cache not found: {self.speed_band_mapping_path}"
             )
 
-        print(
-            "[*] Loading SpeedBand → OSM cache..."
-        )
+        print("[*] Loading SpeedBand → OSM cache...")
 
         with open(
-                self.speed_band_mapping_path,
-                "r",
-                encoding="utf-8",
+            self.speed_band_mapping_path,
+            "r",
+            encoding="utf-8",
         ) as f:
-
             mapping = json.load(f)
 
-        print(
-            f"[+] Loaded {len(mapping):,} "
-            "SpeedBand mappings."
-        )
+        print(f"[+] Loaded {len(mapping):,} SpeedBand mappings.")
 
         return mapping
-
 
     ####################################################################
     # Reset
@@ -108,7 +94,6 @@ class TrafficGraphService:
     def _reset(self, graph):
 
         for _, _, _, data in graph.edges(keys=True, data=True):
-
             if "base_travel_time" in data:
                 data["travel_time"] = data["base_travel_time"]
 
@@ -116,23 +101,19 @@ class TrafficGraphService:
     # Speed Bands
     ####################################################################
     def _apply_speed_bands(
-            self,
-            graph,
-            speed_bands,
+        self,
+        graph,
+        speed_bands,
     ):
 
         matched = 0
         missing = 0
 
-
         for band in speed_bands:
-
             ############################################################
             # Look up precomputed LTA -> OSM mapping
             ############################################################
-            entry = self.speed_band_mapping.get(
-                band.incident.metadata["LinkID"]
-            )
+            entry = self.speed_band_mapping.get(band.incident.metadata["LinkID"])
 
             if not entry:
                 missing += 1
@@ -145,9 +126,7 @@ class TrafficGraphService:
             # Apply to every mapped OSM edge
             ############################################################
             for u, v, k in edges:
-
                 data = graph[u][v][k]
-
 
                 maxspeed = data["maxspeed"]
 
@@ -159,7 +138,6 @@ class TrafficGraphService:
                 current_speed = float(band.incident.metadata["MaximumSpeed"])
 
                 multiplier = maxspeed / current_speed
-
 
                 ############################################################
                 # Determine traffic multiplier
@@ -176,31 +154,27 @@ class TrafficGraphService:
                     0,
                 )
 
-                data["adjusted_travel_time"] = (
-                    base * multiplier
-                    + traffic_penalty
-                )
+                data["adjusted_travel_time"] = base * multiplier + traffic_penalty
 
                 print(data)
-
 
             print(
                 f"[SpeedBands] matched={matched}, "
                 f"missing={missing}, "
                 f"total={matched + missing}"
             )
+
     ####################################################################
     # Incidents
     ####################################################################
 
     def _apply_incidents(
-            self,
-            graph,
-            incidents,
+        self,
+        graph,
+        incidents,
     ):
 
         for incident in incidents:
-
             if incident.edge is None:
                 continue
 

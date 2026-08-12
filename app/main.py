@@ -25,9 +25,7 @@ async def main():
         reload=False,
     )
 
-    server = uvicorn.Server(
-        api_config
-    )
+    server = uvicorn.Server(api_config)
 
     ############################################################
     # Runtime

@@ -31,9 +31,7 @@ class WorldState:
     constraints: list = field(default_factory=list)
     routes: list = field(default_factory=list)
 
-    compatibility_results: dict[str, CompatibilityResult] = field(
-        default_factory=dict
-    )
+    compatibility_results: dict[str, CompatibilityResult] = field(default_factory=dict)
 
     new_orders: list[IncomingOrder] = field(default_factory=list)
     orders_in_progress: list[IncomingOrder] = field(default_factory=list)

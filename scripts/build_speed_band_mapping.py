@@ -40,10 +40,7 @@ def main():
 
     graph_load_time = time.perf_counter() - start
 
-    print(
-        f"[+] Graph loaded in "
-        f"{graph_load_time:.2f}s"
-    )
+    print(f"[+] Graph loaded in {graph_load_time:.2f}s")
 
     print(
         f"[+] Graph contains "
@@ -70,9 +67,7 @@ def main():
     download_time = time.perf_counter() - start
 
     print(
-        f"[+] Downloaded "
-        f"{len(speed_bands):,} LTA speed bands "
-        f"in {download_time:.2f}s"
+        f"[+] Downloaded {len(speed_bands):,} LTA speed bands in {download_time:.2f}s"
     )
 
     ####################################################################
@@ -91,20 +86,13 @@ def main():
 
     index_time = time.perf_counter() - start
 
-    print(
-        f"[+] STRtree built in "
-        f"{index_time:.2f}s"
-    )
+    print(f"[+] STRtree built in {index_time:.2f}s")
 
     ####################################################################
     # Match ALL LTA segments
     ####################################################################
 
-    print(
-        f"\n[*] Matching "
-        f"{len(speed_bands):,} LTA segments "
-        f"onto OSM..."
-    )
+    print(f"\n[*] Matching {len(speed_bands):,} LTA segments onto OSM...")
 
     start = time.perf_counter()
 
@@ -119,7 +107,6 @@ def main():
         speed_bands,
         start=1,
     ):
-
         edge = matcher.nearest_edge(
             graph,
             band.start_lat,
@@ -131,7 +118,6 @@ def main():
         ############################################################
 
         if edge is None:
-
             missed += 1
 
             print(
@@ -169,31 +155,14 @@ def main():
         # Progress
         ############################################################
 
-        if (
-            i % 100 == 0
-            or i == total
-        ):
+        if i % 100 == 0 or i == total:
+            elapsed = time.perf_counter() - start
 
-            elapsed = (
-                time.perf_counter()
-                - start
-            )
+            rate = i / elapsed if elapsed > 0 else 0
 
-            rate = (
-                i / elapsed
-                if elapsed > 0
-                else 0
-            )
+            remaining = total - i
 
-            remaining = (
-                total - i
-            )
-
-            eta = (
-                remaining / rate
-                if rate > 0
-                else 0
-            )
+            eta = remaining / rate if rate > 0 else 0
 
             print(
                 f"[{i:,}/{total:,}] "
@@ -203,10 +172,7 @@ def main():
                 f"ETA={eta:.1f}s"
             )
 
-    matching_time = (
-        time.perf_counter()
-        - start
-    )
+    matching_time = time.perf_counter() - start
 
     ####################################################################
     # Save mapping
@@ -226,17 +192,13 @@ def main():
         "w",
         encoding="utf-8",
     ) as f:
-
         json.dump(
             mapping,
             f,
             indent=2,
         )
 
-    save_time = (
-        time.perf_counter()
-        - start
-    )
+    save_time = time.perf_counter() - start
 
     ####################################################################
     # Summary
@@ -246,59 +208,34 @@ def main():
     print("       SPEED BAND MAPPING RESULTS")
     print("========================================")
 
-    print(
-        f"LTA segments       : {total:,}"
-    )
+    print(f"LTA segments       : {total:,}")
+
+    print(f"Matched            : {matched:,}")
+
+    print(f"Missed             : {missed:,}")
 
     print(
-        f"Matched            : {matched:,}"
-    )
-
-    print(
-        f"Missed             : {missed:,}"
-    )
-
-    print(
-        f"Match rate         : "
-        f"{(matched / total * 100):.2f}%"
+        f"Match rate         : {(matched / total * 100):.2f}%"
         if total
         else "Match rate         : N/A"
     )
 
-    print(
-        f"Graph load         : "
-        f"{graph_load_time:.2f}s"
-    )
+    print(f"Graph load         : {graph_load_time:.2f}s")
 
-    print(
-        f"LTA download       : "
-        f"{download_time:.2f}s"
-    )
+    print(f"LTA download       : {download_time:.2f}s")
 
-    print(
-        f"STRtree build      : "
-        f"{index_time:.2f}s"
-    )
+    print(f"STRtree build      : {index_time:.2f}s")
 
-    print(
-        f"Spatial matching   : "
-        f"{matching_time:.2f}s"
-    )
+    print(f"Spatial matching   : {matching_time:.2f}s")
 
-    print(
-        f"Mapping save       : "
-        f"{save_time:.2f}s"
-    )
+    print(f"Mapping save       : {save_time:.2f}s")
 
     print(
         f"Total preprocessing: "
         f"{graph_load_time + download_time + index_time + matching_time + save_time:.2f}s"
     )
 
-    print(
-        f"\n[+] Mapping saved to:"
-        f"\n    {OUTPUT_PATH}"
-    )
+    print(f"\n[+] Mapping saved to:\n    {OUTPUT_PATH}")
 
     print("========================================")
 

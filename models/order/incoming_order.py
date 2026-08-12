@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 class IncomingOrder(BaseModel):
     """Order extracted from natural language."""
 
-
     pickup_address: str = Field(description="Pickup address or location.")
 
     delivery_address: str = Field(description="Delivery address or location.")

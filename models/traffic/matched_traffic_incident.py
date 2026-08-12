@@ -5,7 +5,6 @@ from typing import Optional
 from models.traffic.traffic_incident import TrafficIncident
 
 
-
 class MatchType(Enum):
     ROAD = "road"
 

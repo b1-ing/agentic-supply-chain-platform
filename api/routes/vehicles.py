@@ -16,23 +16,18 @@ def serialize_vehicle(vehicle) -> VehicleResponse:
 
     return VehicleResponse(
         vehicle_id=vehicle.vehicle_id,
-        status=vehicle.status.value,
-
+        status=vehicle.status,
         current_node=vehicle.current_node,
         current_lat=vehicle.current_lat,
         current_lon=vehicle.current_lon,
-
         max_weight_kg=vehicle.max_weight_kg,
         max_volume_m3=vehicle.max_volume_m3,
         max_pallets=vehicle.max_pallets,
-
         height_m=vehicle.height_m,
         width_m=vehicle.width_m,
         length_m=vehicle.length_m,
-
         refrigerated=vehicle.refrigerated,
         hazardous_certified=vehicle.hazardous_certified,
-
         current_route_id=None,
     )
 
@@ -42,13 +37,10 @@ def serialize_vehicle(vehicle) -> VehicleResponse:
     response_model=list[VehicleResponse],
 )
 def get_vehicles(
-        world: WorldState = Depends(get_world),
+    world: WorldState = Depends(get_world),
 ):
 
-    return [
-        serialize_vehicle(vehicle)
-        for vehicle in world.vehicles
-    ]
+    return [serialize_vehicle(vehicle) for vehicle in world.vehicles]
 
 
 @router.get(
@@ -56,16 +48,12 @@ def get_vehicles(
     response_model=VehicleResponse,
 )
 def get_vehicle(
-        vehicle_id: str,
-        world: WorldState = Depends(get_world),
+    vehicle_id: str,
+    world: WorldState = Depends(get_world),
 ):
 
     vehicle = next(
-        (
-            v
-            for v in world.vehicles
-            if v.vehicle_id == vehicle_id
-        ),
+        (v for v in world.vehicles if v.vehicle_id == vehicle_id),
         None,
     )
 

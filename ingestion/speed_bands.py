@@ -5,7 +5,6 @@ from models.traffic.road_speed_band import RoadSpeedBand
 
 
 class SpeedBandService:
-
     def __init__(self, client: LTADataMallClient):
         self.client = client
 
@@ -16,7 +15,6 @@ class SpeedBandService:
         observations = []
 
         for item in raw:
-
             observations.append(
                 RoadSpeedBand(
                     start_lat=float(item["StartLat"]),

@@ -3,6 +3,7 @@ from langsmith import traceable
 from models.order.order_state import OrderState
 from agents.order.order_extraction_agent import OrderExtractionAgent
 
+
 @traceable
 def assess_order(state: OrderState) -> OrderState:
     """
@@ -18,7 +19,6 @@ def assess_order(state: OrderState) -> OrderState:
 
     # First time this order is created
     if order is None:
-
         order = agent.extract(
             state.raw_order,
         )

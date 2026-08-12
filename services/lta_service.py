@@ -147,7 +147,6 @@ class LTADataMallClient:
                     print("[+] Last page reached.")
                     break
 
-
                 skip += 500
                 time.sleep(1)  # Small throttle to respect rate limits
             except Exception as e:

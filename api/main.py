@@ -26,6 +26,4 @@ app.include_router(vehicles.router)
 app.include_router(orders.router)
 app.include_router(routes.router)
 app.include_router(planning.router)
-app.include_router(
-    traffic_tiles.router
-)
+app.include_router(traffic_tiles.router)

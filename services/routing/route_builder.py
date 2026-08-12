@@ -10,6 +10,10 @@ from models.routing.vehicle_route import VehicleRoute
 from models.vehicles.vehicle import Vehicle
 from models.order.routing_location import RoutingLocation
 from services.routing.onemap_routing_service import OneMapRoutingService
+from uuid import uuid4
+
+from models.vehicles.vehicle import VehicleStatus
+
 
 class RouteBuilder:
     """Converts the raw OR-Tools solution into domain models.
@@ -27,6 +31,7 @@ class RouteBuilder:
             │     └── RouteSegments
             └── VehicleRoute
     """
+
     def __init__(self):
         self.om_routing_service = OneMapRoutingService()
 
@@ -70,11 +75,7 @@ class RouteBuilder:
 
             vehicle_routes.append(vehicle_route)
 
-        vehicle_routes = [
-            route
-            for route in vehicle_routes
-            if route.total_distance > 0
-        ]
+        vehicle_routes = [route for route in vehicle_routes if route.total_distance > 0]
 
         return RoutePlan(
             routes=vehicle_routes,
@@ -126,9 +127,12 @@ class RouteBuilder:
         # the below are self explanatory, calculating distance and travel times from each segments only
         total_distance = sum(segment.distance for segment in segments)
 
+
         total_travel_time = sum(segment.travel_time for segment in segments)
 
-        return VehicleRoute(
+
+        returned_route = VehicleRoute(
+            route_id=f"ROUTE-{uuid4().hex[:8].upper()}",
             vehicle_id=vehicle.vehicle_id,
             stops=stops,
             segments=segments,
@@ -136,7 +140,13 @@ class RouteBuilder:
             total_travel_time=total_travel_time,
         )
 
-    ####################################################################
+        vehicle.current_route_id = returned_route.route_id
+        vehicle.current_route = returned_route
+        vehicle.status = VehicleStatus.EN_ROUTE
+
+        return returned_route
+
+        ####################################################################
     # Stops
     ####################################################################
 
@@ -213,9 +223,9 @@ class RouteBuilder:
         return segments
 
     def _build_segment(
-            self,
-            from_location: RoutingLocation,
-            to_location: RoutingLocation,
+        self,
+        from_location: RoutingLocation,
+        to_location: RoutingLocation,
     ) -> RouteSegment:
         """
         Builds a RouteSegment between two routing locations using the
@@ -229,8 +239,6 @@ class RouteBuilder:
             RouteSegment containing the road geometry, travel time and distance.
         """
 
-
-
         route = self.om_routing_service.route(
             start_lat=from_location.lat,
             start_lon=from_location.lon,
@@ -240,16 +248,15 @@ class RouteBuilder:
 
         print(route)
 
-        decoded = polyline.decode(
-            route["route_geometry"]
-        )
+        decoded = polyline.decode(route["route_geometry"])
 
         return RouteSegment(
             geometry=decoded,
             travel_time=route["route_summary"]["total_time"],
             distance=route["route_summary"]["total_distance"],
-            instructions=route["route_instructions"]
+            instructions=route["route_instructions"],
         )
+
     ####################################################################
     # Helpers
     ####################################################################

@@ -5,6 +5,7 @@ import folium
 from models.routing.route_plan import RoutePlan
 from folium.plugins import PolyLineTextPath
 
+
 class RouteVisualiser:
     """
     Visualises a RoutePlan on an interactive Folium map.
@@ -41,14 +42,12 @@ class RouteVisualiser:
         ###############################################################
 
         for index, route in enumerate(route_plan.routes):
-
             colour = self._COLOURS[index % len(self._COLOURS)]
 
             #
             # Draw road geometry
             #
             for segment in route.segments:
-
                 if not segment.geometry:
                     continue
 
@@ -62,16 +61,19 @@ class RouteVisualiser:
                 # --- Add Direction A   rrows ---
                 PolyLineTextPath(
                     line,
-                    " ► ",               # Arrow character (or '►', '➜', '>>')
-                    repeat=True,          # Repeat along the segment length
-                    offset=6,             # Vertical offset from the polyline
-                    attributes={"fill": colour, "font-size": "14px", "font-weight": "bold"},
+                    " ► ",  # Arrow character (or '►', '➜', '>>')
+                    repeat=True,  # Repeat along the segment length
+                    offset=6,  # Vertical offset from the polyline
+                    attributes={
+                        "fill": colour,
+                        "font-size": "14px",
+                        "font-weight": "bold",
+                    },
                 ).add_to(m)
             #
             # Draw stops
             #
             for stop in route.stops:
-
                 location = stop.location
 
                 popup = (
@@ -81,7 +83,6 @@ class RouteVisualiser:
                 )
 
                 if location.kind == "start":
-
                     icon = folium.Icon(
                         color="black",
                         icon="play",
@@ -89,7 +90,6 @@ class RouteVisualiser:
                     )
 
                 elif location.kind == "end":
-
                     icon = folium.Icon(
                         color="black",
                         icon="stop",
@@ -97,7 +97,6 @@ class RouteVisualiser:
                     )
 
                 elif location.kind == "pickup":
-
                     icon = folium.Icon(
                         color="green",
                         icon="arrow-up",
@@ -105,7 +104,6 @@ class RouteVisualiser:
                     )
 
                 elif location.kind == "delivery":
-
                     icon = folium.Icon(
                         color="red",
                         icon="arrow-down",
@@ -113,7 +111,6 @@ class RouteVisualiser:
                     )
 
                 else:
-
                     icon = folium.Icon(color="blue")
 
                 folium.Marker(
@@ -144,13 +141,8 @@ class RouteVisualiser:
     ) -> tuple[float, float]:
 
         for route in route_plan.routes:
-
             for stop in route.stops:
-
-                if (
-                    stop.location.lat is not None
-                    and stop.location.lon is not None
-                ):
+                if stop.location.lat is not None and stop.location.lon is not None:
                     return (
                         stop.location.lat,
                         stop.location.lon,

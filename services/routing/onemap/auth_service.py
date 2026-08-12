@@ -20,9 +20,7 @@ class OneMapAuthService:
         self.password = os.getenv("ONEMAP_PASSWORD")
 
         if not self.email or not self.password:
-            raise RuntimeError(
-                "ONEMAP_EMAIL and ONEMAP_PASSWORD must be set."
-            )
+            raise RuntimeError("ONEMAP_EMAIL and ONEMAP_PASSWORD must be set.")
 
         self._token: str | None = None
         self._expiry: int = 0
@@ -36,10 +34,7 @@ class OneMapAuthService:
         #
         # Refresh if expired (or about to expire)
         #
-        if (
-            self._token is None
-            or time.time() >= self._expiry - 300
-        ):
+        if self._token is None or time.time() >= self._expiry - 300:
             self._authenticate()
 
         return self._token
@@ -66,6 +61,4 @@ class OneMapAuthService:
         self._token = data["access_token"]
         self._expiry = int(data["expiry_timestamp"])
 
-        print(
-            f"Fetched OneMap token. Expires at {self._expiry}"
-        )
+        print(f"Fetched OneMap token. Expires at {self._expiry}")

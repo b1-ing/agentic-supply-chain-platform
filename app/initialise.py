@@ -104,9 +104,6 @@ def initialise_world() -> WorldState:
         f"{graph.number_of_edges():,} edges"
     )
 
-    print(
-        f"[Initialise] "
-        f"{len(world.vehicles)} vehicles loaded."
-    )
+    print(f"[Initialise] {len(world.vehicles)} vehicles loaded.")
 
     return world

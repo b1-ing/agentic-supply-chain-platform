@@ -3,17 +3,16 @@ from ortools.constraint_solver import routing_enums_pb2
 
 
 class ORToolsSolver:
-
     def solve(
-            self,
-            matrix,
-            starts,
-            ends,
-            demands,
-            capacities,
-            pickup_delivery_pairs,
-            vehicle_constraints=None,
-            time_limit: int = 10,
+        self,
+        matrix,
+        starts,
+        ends,
+        demands,
+        capacities,
+        pickup_delivery_pairs,
+        vehicle_constraints=None,
+        time_limit: int = 10,
     ):
 
         manager = pywrapcp.RoutingIndexManager(
@@ -25,7 +24,6 @@ class ORToolsSolver:
 
         routing = pywrapcp.RoutingModel(manager)
 
-
         ############################################################
         # Travel time
         ############################################################
@@ -36,13 +34,9 @@ class ORToolsSolver:
 
             return int(matrix[from_node][to_node])
 
-        transit_index = routing.RegisterTransitCallback(
-            transit_callback
-        )
+        transit_index = routing.RegisterTransitCallback(transit_callback)
 
-        routing.SetArcCostEvaluatorOfAllVehicles(
-            transit_index
-        )
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_index)
 
         ############################################################
         # Capacity
@@ -54,9 +48,7 @@ class ORToolsSolver:
 
             return demands[node]
 
-        demand_index = routing.RegisterUnaryTransitCallback(
-            demand_callback
-        )
+        demand_index = routing.RegisterUnaryTransitCallback(demand_callback)
 
         routing.AddDimensionWithVehicleCapacity(
             demand_index,
@@ -78,16 +70,13 @@ class ORToolsSolver:
             "Time",
         )
 
-        time_dimension = routing.GetDimensionOrDie(
-            "Time"
-        )
+        time_dimension = routing.GetDimensionOrDie("Time")
 
         ############################################################
         # Pickup / Delivery
         ############################################################
 
         for pair in pickup_delivery_pairs:
-
             pickup_idx = manager.NodeToIndex(pair.pickup)
             delivery_idx = manager.NodeToIndex(pair.delivery)
 
@@ -97,8 +86,7 @@ class ORToolsSolver:
             )
 
             routing.solver().Add(
-                routing.VehicleVar(pickup_idx)
-                == routing.VehicleVar(delivery_idx)
+                routing.VehicleVar(pickup_idx) == routing.VehicleVar(delivery_idx)
             )
 
             routing.solver().Add(
@@ -106,13 +94,9 @@ class ORToolsSolver:
                 <= time_dimension.CumulVar(delivery_idx)
             )
 
-            routing.VehicleVar(
-                pickup_idx
-            ).SetValues(pair.allowed_vehicles)
+            routing.VehicleVar(pickup_idx).SetValues(pair.allowed_vehicles)
 
-            routing.VehicleVar(
-                delivery_idx
-            ).SetValues(pair.allowed_vehicles)
+            routing.VehicleVar(delivery_idx).SetValues(pair.allowed_vehicles)
 
         ############################################################
         # Search
@@ -140,16 +124,11 @@ class ORToolsSolver:
             return None
 
         for pair in pickup_delivery_pairs:
-
             pickup_idx = manager.NodeToIndex(pair.pickup)
 
-            vehicle = solution.Value(
-                routing.VehicleVar(pickup_idx)
-            )
+            vehicle = solution.Value(routing.VehicleVar(pickup_idx))
 
-            print(
-                f"{pair.order_id} -> vehicle {vehicle}"
-            )
+            print(f"{pair.order_id} -> vehicle {vehicle}")
 
         return self._extract_routes(
             manager,
@@ -160,33 +139,25 @@ class ORToolsSolver:
     ################################################################
 
     def _extract_routes(
-            self,
-            manager,
-            routing,
-            solution,
+        self,
+        manager,
+        routing,
+        solution,
     ):
 
         routes = []
 
         for vehicle in range(routing.vehicles()):
-
             route = []
 
             index = routing.Start(vehicle)
 
             while not routing.IsEnd(index):
+                route.append(manager.IndexToNode(index))
 
-                route.append(
-                    manager.IndexToNode(index)
-                )
+                index = solution.Value(routing.NextVar(index))
 
-                index = solution.Value(
-                    routing.NextVar(index)
-                )
-
-            route.append(
-                manager.IndexToNode(index)
-            )
+            route.append(manager.IndexToNode(index))
 
             routes.append(route)
 

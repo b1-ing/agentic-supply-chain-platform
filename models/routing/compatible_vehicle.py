@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from models.vehicles.vehicle import VehicleStatus
+
+
 @dataclass(slots=True)
 class CompatibleVehicle:
     vehicle_id: str

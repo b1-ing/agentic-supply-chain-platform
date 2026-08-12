@@ -4,52 +4,47 @@ from app.initialise import initialise_world
 
 from services.order.order_service import OrderService
 from services.traffic.traffic_pipeline import TrafficPipeline
+from services.simulation.vehicle_simulator import (
+    VehicleSimulationService,
+)
 import asyncio
+from services.world.world_manager import world_manager
+
 
 class Runtime:
-
     def __init__(self):
 
         self.order_service = OrderService()
 
         self.traffic_pipeline = TrafficPipeline()
 
+        self.vehicle_simulator = (
+            VehicleSimulationService()
+        )
+
     async def run(self):
+
+        last_tick = time.monotonic()
 
         while True:
 
-            prompt = await asyncio.to_thread(
-                    input,
-                    "> ",
-                )
+            now = time.monotonic()
 
-            prompt = prompt.strip()
+            dt = now - last_tick
+            last_tick = now
 
-            if not prompt:
-                continue
+            world = world_manager.get_world()
 
-            result = await self.order_service.process_order(prompt)
-
-
-            print(
-                result["decision"]
+            self.vehicle_simulator.update(
+                world,
+                dt,
             )
 
-            world = result["world"]
 
-            print(
-                f"\nPending orders     : "
-                f"{len(world.new_orders)}"
-            )
+            # print(f"\nPending orders     : {len(world.new_orders)}")
+            #
+            # print(f"In-progress orders : {len(world.orders_in_progress)}")
+            #
+            # print(f"Vehicle routes     : {len(world.routes)}")
 
-            print(
-                f"In-progress orders : "
-                f"{len(world.orders_in_progress)}"
-            )
-
-            print(
-                f"Vehicle routes     : "
-                f"{len(world.routes)}"
-            )
-
-            time.sleep(1)
+            await asyncio.sleep(1)

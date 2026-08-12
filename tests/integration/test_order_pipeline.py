@@ -52,10 +52,9 @@ def run_single_test(prompt: str):
     graph = ox.load_graphml("cache/singapore.graphml")
     mapping = {}
 
-
     world_manager.initialise(
         graph=graph,
-        mapping=mapping,        # remove if you've removed depots completely
+        mapping=mapping,  # remove if you've removed depots completely
         vehicles=[],
     )
 
@@ -75,7 +74,6 @@ def run_single_test(prompt: str):
     ]
 
     for name, node in pipeline:
-
         if name != "validate_order()" and not getattr(state, "valid", True):
             break
 
@@ -86,7 +84,6 @@ def run_single_test(prompt: str):
 
 
 if __name__ == "__main__":
-
     prompts = [
         "Deliver 8 pallets of frozen seafood from Jurong Port to Changi Airport before 3 PM.",
         "Transport 500kg of hazardous chemicals from Tuas Port to PSA Pasir Panjang.",
@@ -100,7 +97,6 @@ if __name__ == "__main__":
     world = WorldState()
 
     for prompt in prompts:
-
         state = OrderState(
             raw_order=prompt,
             world=world,

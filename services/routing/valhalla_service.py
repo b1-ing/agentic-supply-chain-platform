@@ -23,10 +23,10 @@ class ValhallaService:
     """
 
     def nearest_node(
-            self,
-            graph: nx.MultiDiGraph,
-            lat: float,
-            lon: float,
+        self,
+        graph: nx.MultiDiGraph,
+        lat: float,
+        lon: float,
     ) -> int:
 
         return ox.distance.nearest_nodes(
@@ -36,10 +36,10 @@ class ValhallaService:
         )
 
     def shortest_path(
-            self,
-            graph: nx.MultiDiGraph,
-            source: int,
-            target: int,
+        self,
+        graph: nx.MultiDiGraph,
+        source: int,
+        target: int,
     ) -> list[int]:
 
         return nx.shortest_path(
@@ -50,10 +50,10 @@ class ValhallaService:
         )
 
     def travel_time(
-            self,
-            graph: nx.MultiDiGraph,
-            source: int,
-            target: int,
+        self,
+        graph: nx.MultiDiGraph,
+        source: int,
+        target: int,
     ) -> float:
 
         return nx.shortest_path_length(
@@ -64,10 +64,10 @@ class ValhallaService:
         )
 
     def travel_distance(
-            self,
-            graph,
-            source,
-            target,
+        self,
+        graph,
+        source,
+        target,
     ) -> float:
 
         path = self.shortest_path(
@@ -79,7 +79,6 @@ class ValhallaService:
         distance = 0
 
         for u, v in zip(path[:-1], path[1:]):
-
             edge = min(
                 graph[u][v].values(),
                 key=lambda e: e["length"],
@@ -90,10 +89,10 @@ class ValhallaService:
         return distance
 
     def route_geometry(
-            self,
-            graph,
-            source,
-            target,
+        self,
+        graph,
+        source,
+        target,
     ) -> Sequence[int]:
 
         return self.shortest_path(

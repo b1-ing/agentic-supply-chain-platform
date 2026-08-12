@@ -5,28 +5,22 @@ import json
 
 
 class SpeedBandMapping:
-
     def __init__(
-            self,
-            path="cache/speed_band_mapping.json",
+        self,
+        path="cache/speed_band_mapping.json",
     ):
 
         with open(path) as f:
             self.mapping = json.load(f)
 
     def get_edges(
-            self,
-            link_id,
+        self,
+        link_id,
     ):
 
-        record = self.mapping.get(
-            str(link_id)
-        )
+        record = self.mapping.get(str(link_id))
 
         if record is None:
             return []
 
-        return [
-            tuple(edge)
-            for edge in record["edges"]
-        ]
+        return [tuple(edge) for edge in record["edges"]]

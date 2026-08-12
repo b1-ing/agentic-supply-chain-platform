@@ -5,7 +5,6 @@ from models.speed_band import SpeedBand
 
 @dataclass
 class MatchedSpeedBand:
-
     speed_band: SpeedBand
 
     affected_edges: list[tuple[int, int, int]]

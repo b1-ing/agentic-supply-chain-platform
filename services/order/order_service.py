@@ -10,15 +10,14 @@ from models.vehicles.vehicle import VehicleStatus
 
 
 class OrderService:
-
     def __init__(self):
         self.order_graph = build_order_graph()
         self.planner = PlanningDecisionAgent()
         self.routing = RoutingService()
 
     async def process_order(
-            self,
-            prompt: str,
+        self,
+        prompt: str,
     ):
         """
         Process a user order through the complete order pipeline.
@@ -49,7 +48,7 @@ class OrderService:
             world=world,
         )
 
-        state = self.order_graph.invoke(
+        self.order_graph.invoke(
             state,
             config={
                 "run_name": "Order Graph",
@@ -78,15 +77,13 @@ class OrderService:
         route_plan = None
 
         if decision.should_replan:
+            route_plan = self.routing.plan_routes(world)
 
-            route_plan = self.routing.plan_routes(
-                world
-            )
-
-            self._commit_routes(
-                world,
-                route_plan,
-            )
+            if route_plan:
+                self._commit_routes(
+                    world,
+                    route_plan,
+                )
 
         ############################################################
         # 5. Return current world
@@ -96,6 +93,7 @@ class OrderService:
             "world": world,
             "decision": decision,
             "route_plan": route_plan,
+            "order_id": decision.order_id,
         }
 
     ################################################################
@@ -103,9 +101,9 @@ class OrderService:
     ################################################################
 
     def _commit_routes(
-            self,
-            world,
-            route_plan,
+        self,
+        world,
+        route_plan,
     ):
 
         routed_orders = []
@@ -115,13 +113,8 @@ class OrderService:
         ############################################################
 
         for new_route in route_plan.routes:
-
             vehicle = next(
-                (
-                    v
-                    for v in world.vehicles
-                    if v.vehicle_id == new_route.vehicle_id
-                ),
+                (v for v in world.vehicles if v.vehicle_id == new_route.vehicle_id),
                 None,
             )
 
@@ -142,37 +135,24 @@ class OrderService:
             #
 
             existing = next(
-                (
-                    r
-                    for r in world.routes
-                    if r.vehicle_id == new_route.vehicle_id
-                ),
+                (r for r in world.routes if r.vehicle_id == new_route.vehicle_id),
                 None,
             )
 
             if existing is None:
-
-                world.routes.append(
-                    new_route
-                )
+                world.routes.append(new_route)
 
             else:
-
                 existing.stops = new_route.stops
                 existing.segments = new_route.segments
-                existing.total_distance = (
-                    new_route.total_distance
-                )
-                existing.total_travel_time = (
-                    new_route.total_travel_time
-                )
+                existing.total_distance = new_route.total_distance
+                existing.total_travel_time = new_route.total_travel_time
 
             ########################################################
             # Move assigned orders
             ########################################################
 
             for stop in new_route.stops:
-
                 if stop.location.kind != "pickup":
                     continue
 
@@ -188,9 +168,7 @@ class OrderService:
                 if order is None:
                     continue
 
-                order.assigned_vehicle = (
-                    new_route.vehicle_id
-                )
+                order.assigned_vehicle = new_route.vehicle_id
 
                 routed_orders.append(order)
 
@@ -199,7 +177,6 @@ class OrderService:
         ############################################################
 
         for order in routed_orders:
-
             if order in world.new_orders:
                 world.new_orders.remove(order)
 

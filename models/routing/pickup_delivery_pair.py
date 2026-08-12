@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 
-
 @dataclass(slots=True)
 class PickupDeliveryPair:
     order_id: str

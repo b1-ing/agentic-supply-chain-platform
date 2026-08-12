@@ -1,5 +1,6 @@
 from langsmith import traceable
 
+
 @traceable(name="Validate Order")
 def validate_order(state):
 

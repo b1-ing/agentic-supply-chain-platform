@@ -4,8 +4,8 @@ from services.lta_service import LTADataMallClient
 # from models.events import Roadwork
 ###     WIP     ###
 
-class RoadworksService:
 
+class RoadworksService:
     def __init__(self, client: LTADataMallClient):
         self.client = client
 
@@ -16,11 +16,6 @@ class RoadworksService:
         roadworks = []
 
         for item in raw:
-
-            roadworks.append(
-                Roadwork(
-                    ...
-                )
-            )
+            roadworks.append(Roadwork(...))
 
         return roadworks

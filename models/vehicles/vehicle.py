@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel
 from models.routing.vehicle_route import VehicleRoute
 
+
 class VehicleStatus(str, Enum):
     IDLE = "IDLE"
     EN_ROUTE = "EN_ROUTE"
@@ -15,6 +16,10 @@ class VehicleStatus(str, Enum):
 class Vehicle(BaseModel, ABC):
     vehicle_id: str
     status: VehicleStatus = VehicleStatus.IDLE
+
+    current_route_id: str | None = None
+
+    route_progress_m: float = 0.0
 
     current_node: Optional[int] = None
     current_lat: Optional[float] = None

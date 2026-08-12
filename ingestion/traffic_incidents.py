@@ -5,7 +5,6 @@ from models.events import TrafficIncident
 
 
 class TrafficIncidentService:
-
     def __init__(self, client: LTADataMallClient):
         self.client = client
 
@@ -16,7 +15,6 @@ class TrafficIncidentService:
         incidents = []
 
         for item in raw_incidents:
-
             latitude = item.get("Latitude")
             longitude = item.get("Longitude")
 

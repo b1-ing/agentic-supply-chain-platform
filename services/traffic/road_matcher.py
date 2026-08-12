@@ -1,4 +1,3 @@
-
 # services/traffic/road_matcher.py
 
 import json
@@ -15,12 +14,9 @@ from models.traffic.matched_traffic_incident import (
 
 
 class RoadMatcher:
-
     def __init__(
-            self,
-            speed_band_mapping_path: str | Path = (
-                "cache/speed_band_mapping.json"
-            ),
+        self,
+        speed_band_mapping_path: str | Path = ("cache/speed_band_mapping.json"),
     ):
 
         ############################################################
@@ -35,13 +31,9 @@ class RoadMatcher:
         # LTA SpeedBand cache
         ############################################################
 
-        self.speed_band_mapping_path = Path(
-            speed_band_mapping_path
-        )
+        self.speed_band_mapping_path = Path(speed_band_mapping_path)
 
-        self.speed_band_mapping = (
-            self._load_speed_band_mapping()
-        )
+        self.speed_band_mapping = self._load_speed_band_mapping()
 
     ################################################################
     # SpeedBand cache
@@ -50,28 +42,20 @@ class RoadMatcher:
     def _load_speed_band_mapping(self):
 
         if not self.speed_band_mapping_path.exists():
-
             raise FileNotFoundError(
-                "SpeedBand mapping cache not found: "
-                f"{self.speed_band_mapping_path}"
+                f"SpeedBand mapping cache not found: {self.speed_band_mapping_path}"
             )
 
-        print(
-            "[*] Loading SpeedBand → OSM cache..."
-        )
+        print("[*] Loading SpeedBand → OSM cache...")
 
         with open(
-                self.speed_band_mapping_path,
-                "r",
-                encoding="utf-8",
+            self.speed_band_mapping_path,
+            "r",
+            encoding="utf-8",
         ) as f:
-
             mapping = json.load(f)
 
-        print(
-            f"[+] Loaded {len(mapping):,} "
-            "SpeedBand mappings."
-        )
+        print(f"[+] Loaded {len(mapping):,} SpeedBand mappings.")
 
         return mapping
 
@@ -86,8 +70,8 @@ class RoadMatcher:
     ################################################################
 
     def build_index(
-            self,
-            graph: nx.MultiDiGraph,
+        self,
+        graph: nx.MultiDiGraph,
     ):
 
         self.graph = graph
@@ -96,13 +80,10 @@ class RoadMatcher:
         geometries = []
 
         for u, v, key, data in graph.edges(
-                keys=True,
-                data=True,
+            keys=True,
+            data=True,
         ):
-
-            geometry = data.get(
-                "geometry"
-            )
+            geometry = data.get("geometry")
 
             #
             # Some OSM edges may not have
@@ -110,7 +91,6 @@ class RoadMatcher:
             #
 
             if geometry is None:
-
                 u_data = graph.nodes[u]
                 v_data = graph.nodes[v]
 
@@ -127,9 +107,7 @@ class RoadMatcher:
                     ]
                 )
 
-            geometries.append(
-                geometry
-            )
+            geometries.append(geometry)
 
             self.edges.append(
                 (
@@ -139,80 +117,58 @@ class RoadMatcher:
                 )
             )
 
-        self.tree = STRtree(
-            geometries
-        )
+        self.tree = STRtree(geometries)
 
-        print(
-            f"[+] Built incident spatial index "
-            f"for {len(self.edges):,} OSM edges."
-        )
+        print(f"[+] Built incident spatial index for {len(self.edges):,} OSM edges.")
 
     ################################################################
     # Nearest edge
     ################################################################
 
     def nearest_edge(
-            self,
-            graph,
-            latitude,
-            longitude,
+        self,
+        graph,
+        latitude,
+        longitude,
     ):
 
         #
         # Build the spatial index once.
         #
 
-        if (
-                self.tree is None
-                or self.graph is not graph
-        ):
-
-            self.build_index(
-                graph
-            )
+        if self.tree is None or self.graph is not graph:
+            self.build_index(graph)
 
         point = Point(
             longitude,
             latitude,
         )
 
-        geometry_index = (
-            self.tree.nearest(
-                point
-            )
-        )
+        geometry_index = self.tree.nearest(point)
 
         if geometry_index is None:
             return None
 
-        return self.edges[
-            int(geometry_index)
-        ]
+        return self.edges[int(geometry_index)]
 
     ################################################################
     # Match incidents
     ################################################################
 
     def match_incidents(
-            self,
-            graph: nx.MultiDiGraph,
-            incidents,
+        self,
+        graph: nx.MultiDiGraph,
+        incidents,
     ):
 
         matched = []
 
         for incident in incidents:
-
             ########################################################
             # Coordinate-based incident
             ########################################################
 
-            if (
-                    incident.latitude is not None
-                    and incident.longitude is not None
-            ):
-
+            if incident.latitude is not None and incident.longitude is not None:
                 edge = self.nearest_edge(
                     graph,
                     incident.latitude,
@@ -225,9 +181,7 @@ class RoadMatcher:
                 matched.append(
                     MatchedTrafficIncident(
                         incident=incident,
-                        affected_edges=[
-                            edge
-                        ],
+                        affected_edges=[edge],
                         match_type=MatchType.COORDINATE,
                         confidence=1.0,
                     )
@@ -240,7 +194,6 @@ class RoadMatcher:
             ########################################################
 
             if incident.road_name:
-
                 edges = self._match_by_road_name(
                     graph,
                     incident.road_name,
@@ -292,36 +245,24 @@ class RoadMatcher:
     ################################################################
 
     def match_speed_bands(
-            self,
-            graph: nx.MultiDiGraph,
-            speed_bands,
+        self,
+        graph: nx.MultiDiGraph,
+        speed_bands,
     ):
 
         matched = []
 
-
         for band in speed_bands:
+            link_id = str(band.link_id)
 
-            link_id = str(
-                band.link_id
-            )
-
-            cached = (
-                self.speed_band_mapping.get(
-                    link_id
-                )
-            )
+            cached = self.speed_band_mapping.get(link_id)
 
             ########################################################
             # No mapping
             ########################################################
 
             if cached is None:
-
-                print(
-                    f"[MISS] No cached mapping "
-                    f"for LTA SpeedBand {link_id}"
-                )
+                print(f"[MISS] No cached mapping for LTA SpeedBand {link_id}")
 
                 continue
 
@@ -332,10 +273,9 @@ class RoadMatcher:
             affected_edges = []
 
             for edge in cached.get(
-                    "edges",
-                    [],
+                "edges",
+                [],
             ):
-
                 #
                 # JSON stores tuples as lists.
                 #
@@ -347,12 +287,7 @@ class RoadMatcher:
                     v,
                     key,
                 ):
-
-                    print(
-                        f"[MISS] Cached edge "
-                        f"{edge} does not exist "
-                        f"for LTA {link_id}"
-                    )
+                    print(f"[MISS] Cached edge {edge} does not exist for LTA {link_id}")
 
                     continue
 
@@ -369,11 +304,7 @@ class RoadMatcher:
             ########################################################
 
             if not affected_edges:
-
-                print(
-                    f"[MISS] LTA {link_id} "
-                    "has no valid OSM edges"
-                )
+                print(f"[MISS] LTA {link_id} has no valid OSM edges")
 
                 continue
 
@@ -397,9 +328,9 @@ class RoadMatcher:
     ################################################################
 
     def _match_by_road_name(
-            self,
-            graph,
-            road_name,
+        self,
+        graph,
+        road_name,
     ):
 
         affected = []
@@ -407,35 +338,24 @@ class RoadMatcher:
         target = road_name.lower()
 
         for u, v, key, data in graph.edges(
-                keys=True,
-                data=True,
+            keys=True,
+            data=True,
         ):
-
-            name = data.get(
-                "name"
-            )
+            name = data.get("name")
 
             if name is None:
                 continue
 
             if isinstance(
-                    name,
-                    list,
+                name,
+                list,
             ):
-
-                names = [
-                    str(n).lower()
-                    for n in name
-                ]
+                names = [str(n).lower() for n in name]
 
             else:
-
-                names = [
-                    str(name).lower()
-                ]
+                names = [str(name).lower()]
 
             if target in names:
-
                 affected.append(
                     (
                         u,
@@ -445,4 +365,3 @@ class RoadMatcher:
                 )
 
         return affected
-

@@ -6,6 +6,7 @@ import requests
 import os
 from dotenv import load_dotenv
 from services.routing.onemap.auth_service import OneMapAuthService
+
 load_dotenv()
 
 
@@ -13,10 +14,9 @@ from websockets import headers
 
 
 class OneMapRoutingService:
-
     def __init__(
-            self,
-            base_url: str = "https://www.onemap.gov.sg",
+        self,
+        base_url: str = "https://www.onemap.gov.sg",
     ):
         self.base_url = base_url.rstrip("/")
         self.auth = OneMapAuthService()
@@ -33,11 +33,11 @@ class OneMapRoutingService:
     ####################################################################
 
     def route(
-            self,
-            start_lat: float,
-            start_lon: float,
-            end_lat: float,
-            end_lon: float,
+        self,
+        start_lat: float,
+        start_lon: float,
+        end_lat: float,
+        end_lon: float,
     ):
         print("token:", os.getenv("ONEMAP_API_KEY"))
 
@@ -52,7 +52,6 @@ class OneMapRoutingService:
             timeout=30,
         )
         if response.status_code == 401:
-
             self.auth._authenticate()
 
             response = requests.get(

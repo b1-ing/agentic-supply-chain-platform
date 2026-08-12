@@ -3,8 +3,8 @@ from models.routing.compatible_vehicle import CompatibleVehicle
 from models.routing.incompatible_vehicle import IncompatibleVehicle
 from enum import Enum
 
-class CompatibilityStatus(Enum):
 
+class CompatibilityStatus(Enum):
     ROUTABLE = "ROUTABLE"
 
     WAITING = "WAITING"
@@ -14,7 +14,6 @@ class CompatibilityStatus(Enum):
 
 @dataclass
 class CompatibilityResult:
-
     order_id: str
 
     compatible: list[CompatibleVehicle]

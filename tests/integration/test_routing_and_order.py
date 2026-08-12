@@ -18,6 +18,7 @@ from models.vehicles.standard_truck import StandardTruck
 # Setup
 ################################################################################
 
+
 def initialise_world():
 
     graph = ox.load_graphml("cache/singapore.graphml")
@@ -58,6 +59,7 @@ def initialise_world():
 # Order pipeline
 ################################################################################
 
+
 def process_order(prompt: str):
 
     state = OrderState(
@@ -74,7 +76,6 @@ def process_order(prompt: str):
     ]
 
     for node in pipeline:
-
         state = node(state)
 
         #
@@ -90,6 +91,7 @@ def process_order(prompt: str):
 # Full integration test
 ################################################################################
 
+
 def test_full_pipeline():
 
     world = initialise_world()
@@ -99,7 +101,7 @@ def test_full_pipeline():
         # "Transport 500kg of hazardous chemicals from Tuas Port to PSA Pasir Panjang.",
         # "Move a fragile MRI scanner from NUH to Singapore General Hospital.",
         "Deliver 20 pallets of electronics from Changi Airfreight Centre to Woodlands.",
-#       "Pickup furniture at IKEA Alexandra and deliver to Marina Bay Sands tomorrow morning.",
+        #       "Pickup furniture at IKEA Alexandra and deliver to Marina Bay Sands tomorrow morning.",
     ]
 
     ####################################################################
@@ -107,7 +109,6 @@ def test_full_pipeline():
     ####################################################################
 
     for prompt in prompts:
-
         order = process_order(prompt)
 
         assert order.pickup_node is not None
@@ -143,7 +144,6 @@ def test_full_pipeline():
     ####################################################################
 
     for route in route_plan.routes:
-
         assert len(route.stops) > 0
         assert len(route.segments) > 0
 
@@ -154,7 +154,6 @@ def test_full_pipeline():
         # Every stop should have coordinates
         #
         for stop in route.stops:
-
             assert stop.location.lat is not None
             assert stop.location.lon is not None
 
@@ -162,7 +161,6 @@ def test_full_pipeline():
         # Every segment should contain geometry from OneMap
         #
         for segment in route.segments:
-
             assert segment.geometry
             assert len(segment.geometry) > 1
 

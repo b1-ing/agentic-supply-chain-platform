@@ -66,9 +66,7 @@ class TrafficIngestionService:
 
         incidents = []
 
-        incidents.extend(
-            self.lta.fetch_incidents()
-        )
+        incidents.extend(self.lta.fetch_incidents())
 
         ###############################################################
         # Analyse incidents
@@ -77,14 +75,9 @@ class TrafficIngestionService:
         analysed_incidents = []
 
         for incident in incidents:
+            analysed = await self.analysis_agent.run(incident)
 
-            analysed = await self.analysis_agent.run(
-                incident
-            )
-
-            analysed_incidents.append(
-                analysed
-            )
+            analysed_incidents.append(analysed)
 
         ###############################################################
         # Match onto graph
@@ -93,7 +86,6 @@ class TrafficIngestionService:
         matched = []
 
         for incident in analysed_incidents:
-
             matched.append(
                 self.matcher.match(
                     world.graph,

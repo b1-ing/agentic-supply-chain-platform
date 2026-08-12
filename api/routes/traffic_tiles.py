@@ -22,23 +22,19 @@ def get_renderer():
     world = world_manager.get_world()
 
     if _renderer is None:
-        _renderer = TrafficTileRenderer(
-            world.graph
-        )
+        _renderer = TrafficTileRenderer(world.graph)
 
     return _renderer
 
 
-@router.get(
-    "/{z}/{x}/{y}.png"
-)
+@router.get("/{z}/{x}/{y}.png")
 async def get_traffic_tile(
-        z: int,
-        x: int,
-        y: int,
+    z: int,
+    x: int,
+    y: int,
 ):
 
-    if z < 0 or z > 20:
+    if z < 13 or z > 20:
         raise HTTPException(
             status_code=400,
             detail="Invalid zoom level",
@@ -65,7 +61,6 @@ async def get_traffic_tile(
         content=buffer.getvalue(),
         media_type="image/png",
         headers={
-            "Cache-Control":
-                "public, max-age=30",
+            "Cache-Control": "public, max-age=30",
         },
     )

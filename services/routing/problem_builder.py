@@ -5,11 +5,12 @@ from models.vehicles.vehicle import Vehicle, VehicleStatus
 from models.routing.pickup_delivery_pair import PickupDeliveryPair
 from models.order.incoming_order import OrderStatus
 from models.routing.compatibility_result import CompatibilityStatus
-class RoutingProblemBuilder:
 
+
+class RoutingProblemBuilder:
     def build(
-            self,
-            world: WorldState,
+        self,
+        world: WorldState,
     ) -> RoutingProblem:
 
         vehicles = self._select_vehicles(world)
@@ -43,8 +44,6 @@ class RoutingProblemBuilder:
             locations,
         )
 
-
-
         return RoutingProblem(
             vehicles=vehicles,
             locations=locations,
@@ -58,13 +57,13 @@ class RoutingProblemBuilder:
     ####################################################################
     # Vehicles
     ####################################################################
-####################################################################
-# Vehicles
-####################################################################
+    ####################################################################
+    # Vehicles
+    ####################################################################
 
     def _select_vehicles(
-            self,
-            world: WorldState,
+        self,
+        world: WorldState,
     ) -> list[Vehicle]:
 
         # Return every vehicle.
@@ -77,22 +76,15 @@ class RoutingProblemBuilder:
         locations: list[RoutingLocation],
     ) -> list[PickupDeliveryPair]:
 
-        pickups = {
-            l.order_id: l.matrix_index
-            for l in locations
-            if l.kind == "pickup"
-        }
+        pickups = {l.order_id: l.matrix_index for l in locations if l.kind == "pickup"}
 
         deliveries = {
-            l.order_id: l.matrix_index
-            for l in locations
-            if l.kind == "delivery"
+            l.order_id: l.matrix_index for l in locations if l.kind == "delivery"
         }
 
         pairs = []
 
         for order in world.new_orders:
-
             compatibility = world.compatibility_results[order.order_id]
 
             print(compatibility)
@@ -110,25 +102,20 @@ class RoutingProblemBuilder:
             )
 
         return pairs
+
     def _failure_reason(
-            self,
-            vehicle,
-            order,
+        self,
+        vehicle,
+        order,
     ) -> str | None:
 
         if order.refrigerated and not vehicle.refrigerated:
             return "Vehicle is not refrigerated."
 
-        if (
-                order.height_m
-                and order.height_m > vehicle.height_m
-        ):
+        if order.height_m and order.height_m > vehicle.height_m:
             return "Vehicle height exceeded."
 
-        if (
-                order.weight_kg
-                and order.weight_kg > vehicle.max_weight_kg
-        ):
+        if order.weight_kg and order.weight_kg > vehicle.max_weight_kg:
             return "Vehicle weight exceeded."
 
         if order.hazardous and not vehicle.hazardous_certified:
@@ -141,9 +128,9 @@ class RoutingProblemBuilder:
     ####################################################################
 
     def _build_locations(
-            self,
-            world: WorldState,
-            vehicles: list[Vehicle],
+        self,
+        world: WorldState,
+        vehicles: list[Vehicle],
     ) -> list[RoutingLocation]:
 
         locations = []
@@ -162,18 +149,15 @@ class RoutingProblemBuilder:
         return locations
 
     def _build_vehicle_locations(
-            self,
-            world: WorldState,
-            vehicles: list[Vehicle],
-            locations: list[RoutingLocation],
+        self,
+        world: WorldState,
+        vehicles: list[Vehicle],
+        locations: list[RoutingLocation],
     ):
 
         for vehicle in vehicles:
-
             if vehicle.current_node is None:
-                raise ValueError(
-                    f"Vehicle {vehicle.vehicle_id} has no current_node."
-                )
+                raise ValueError(f"Vehicle {vehicle.vehicle_id} has no current_node.")
 
             locations.append(
                 RoutingLocation(
@@ -186,13 +170,12 @@ class RoutingProblemBuilder:
             )
 
     def _build_order_locations(
-            self,
-            world: WorldState,
-            locations: list[RoutingLocation],
+        self,
+        world: WorldState,
+        locations: list[RoutingLocation],
     ):
 
         for order in world.new_orders:
-
             locations.append(
                 RoutingLocation(
                     matrix_index=len(locations),
@@ -220,17 +203,17 @@ class RoutingProblemBuilder:
     ####################################################################
 
     def _build_starts(
-            self,
-            vehicles: list[Vehicle],
-            locations: list[RoutingLocation],
+        self,
+        vehicles: list[Vehicle],
+        locations: list[RoutingLocation],
     ) -> list[int]:
 
         return list(range(len(vehicles)))
 
     def _build_ends(
-            self,
-            vehicles: list[Vehicle],
-            locations: list[RoutingLocation],
+        self,
+        vehicles: list[Vehicle],
+        locations: list[RoutingLocation],
     ) -> list[int]:
 
         return list(range(len(vehicles)))
@@ -240,34 +223,27 @@ class RoutingProblemBuilder:
     ####################################################################
 
     def _build_capacities(
-            self,
-            vehicles: list[Vehicle],
+        self,
+        vehicles: list[Vehicle],
     ) -> list[int]:
 
-        return [
-            int(vehicle.max_weight_kg)
-            for vehicle in vehicles
-        ]
+        return [int(vehicle.max_weight_kg) for vehicle in vehicles]
 
     ####################################################################
     # Demands
     ####################################################################
 
     def _build_demands(
-            self,
-            world: WorldState,
-            locations: list[RoutingLocation],
+        self,
+        world: WorldState,
+        locations: list[RoutingLocation],
     ) -> list[int]:
 
-        order_lookup = {
-            order.order_id: order
-            for order in world.new_orders
-        }
+        order_lookup = {order.order_id: order for order in world.new_orders}
 
         demands = []
 
         for location in locations:
-
             if location.kind == "vehicle":
                 demands.append(0)
                 continue

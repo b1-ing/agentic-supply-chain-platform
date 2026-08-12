@@ -8,6 +8,7 @@ router = APIRouter(
     tags=["world"],
 )
 
+
 @router.get("/graph")
 def get_graph():
     world = world_manager.get_world()
@@ -19,4 +20,5 @@ def get_graph():
     ).to_json()
 
     import json
+
     return json.loads(geojson)
