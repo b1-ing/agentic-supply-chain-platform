@@ -6,9 +6,8 @@ from pydantic import BaseModel
 from api.dependencies import get_world
 from api.schemas.order import OrderResponse
 from services.world.world_manager import world_manager
-from services.order.order_service import OrderService
 from shapely.geometry import LineString
-order_service = OrderService()
+
 
 router = APIRouter(
     prefix="/api/orders",

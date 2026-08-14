@@ -70,7 +70,7 @@ class RouteBuilder:
                 vehicle,
                 route,
             )
-            if len(vehicle_route.segments) == 0:
+            if vehicle_route is None:
                 continue
 
             vehicle_routes.append(vehicle_route)
@@ -129,6 +129,9 @@ class RouteBuilder:
 
 
         total_travel_time = sum(segment.travel_time for segment in segments)
+
+        if total_distance <= 0 or not segments:
+            return None
 
 
         returned_route = VehicleRoute(
@@ -246,7 +249,6 @@ class RouteBuilder:
             end_lon=to_location.lon,
         )
 
-        print(route)
 
         decoded = polyline.decode(route["route_geometry"])
 

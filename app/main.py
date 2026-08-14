@@ -8,15 +8,7 @@ from app.initialise import initialise_world
 
 async def main():
 
-    ############################################################
-    # Initialise shared world
-    ############################################################
-
     initialise_world()
-
-    ############################################################
-    # API
-    ############################################################
 
     api_config = uvicorn.Config(
         "api.main:app",
@@ -27,15 +19,9 @@ async def main():
 
     server = uvicorn.Server(api_config)
 
-    ############################################################
-    # Runtime
-    ############################################################
 
     runtime = Runtime()
 
-    ############################################################
-    # Run both against the SAME WorldManager
-    ############################################################
 
     await asyncio.gather(
         runtime.run(),

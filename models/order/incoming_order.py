@@ -3,7 +3,7 @@ from typing import Optional
 from enum import Enum
 from models.routing.compatible_vehicle import CompatibleVehicle
 from pydantic import BaseModel, Field
-
+from models.order.order_constraint import OrderConstraint
 
 class IncomingOrder(BaseModel):
     """Order extracted from natural language."""
@@ -62,6 +62,10 @@ class IncomingOrder(BaseModel):
     latest_pickup: Optional[str] = None
     earliest_delivery: Optional[str] = None
     latest_delivery: Optional[str] = None
+
+    constraints: list[OrderConstraint] = Field(
+                                          default_factory=list
+                                      )
 
     order_id: Optional[str] = None
 

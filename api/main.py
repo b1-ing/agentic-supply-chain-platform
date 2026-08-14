@@ -7,6 +7,7 @@ from api.routes import orders
 from api.routes import routes
 from api.routes import planning
 from api.routes import traffic_tiles
+from api.routes import agent
 
 app = FastAPI()
 
@@ -27,3 +28,4 @@ app.include_router(orders.router)
 app.include_router(routes.router)
 app.include_router(planning.router)
 app.include_router(traffic_tiles.router)
+app.include_router(agent.router)

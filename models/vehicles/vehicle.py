@@ -36,4 +36,5 @@ class Vehicle(BaseModel, ABC):
     length_m: float
 
     refrigerated: bool = False
+    fragile_capable: bool = False
     hazardous_certified: bool = False

@@ -36,8 +36,7 @@ class RoutingService:
         for order in list(world.new_orders):
 
             compatibility = self.compatibility_service.evaluate(
-                world,
-                order,
+                order.order_id
             )
 
             world.compatibility_results[order.order_id] = compatibility

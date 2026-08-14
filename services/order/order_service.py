@@ -58,42 +58,19 @@ class OrderService:
             },
         )
 
-        ############################################################
-        # 2. Get updated world
-        ############################################################
+        # Find the order that was actually created.
+        if not world.orders_in_progress:
+            return {
+                "success": False,
+                "error": "Order was not created.",
+            }
 
-        world = world_manager.get_world()
-
-        ############################################################
-        # 3. Planning
-        ############################################################
-
-        decision = await self.planner.run(world)
-
-        ############################################################
-        # 4. Routing
-        ############################################################
-
-        route_plan = None
-
-        if decision.should_replan:
-            route_plan = self.routing.plan_routes(world)
-
-            if route_plan:
-                self._commit_routes(
-                    world,
-                    route_plan,
-                )
-
-        ############################################################
-        # 5. Return current world
-        ############################################################
+        order = world.orders_in_progress[-1]
 
         return {
-            "world": world,
-            "decision": decision,
-            "route_plan": route_plan,
-            "order_id": decision.order_id,
+            "success": True,
+            "order_id": order.order_id,
+            "order": order,
         }
 
     ################################################################
@@ -176,9 +153,15 @@ class OrderService:
         # Move routed orders out of new_orders
         ############################################################
 
+        new_order_ids = []
         for order in routed_orders:
             if order in world.new_orders:
                 world.new_orders.remove(order)
+                new_order_ids.append(order.order_id)
 
             if order not in world.orders_in_progress:
                 world.orders_in_progress.append(order)
+
+        return new_order_ids
+
+
