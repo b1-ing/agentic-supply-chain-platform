@@ -7,7 +7,7 @@ from api.schemas.world import (
     WorldResponse,
     WorldSummaryResponse,
 )
-
+from api.routes.traffic import serialize_traffic_incident
 from api.routes.vehicles import serialize_vehicle
 from api.routes.orders import serialize_order
 from api.routes.routes import serialize_route
@@ -46,6 +46,10 @@ def get_world(
         new_orders=[serialize_order(order) for order in world.new_orders],
         orders_in_progress=[
             serialize_order(order) for order in world.orders_in_progress
+        ],
+        traffic_events=[
+            serialize_traffic_incident(incident)
+            for incident in world.traffic_events
         ],
         cancelled_orders=[serialize_order(order) for order in world.cancelled_orders],
         unserviceable_orders=[

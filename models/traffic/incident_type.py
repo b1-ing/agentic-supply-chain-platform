@@ -1,9 +1,5 @@
 from enum import Enum
 
-from pydantic.dataclasses import dataclass
-
-
-@dataclass
 class IncidentType(str, Enum):
     ACCIDENT = "accident"
     ROADWORKS = "roadworks"

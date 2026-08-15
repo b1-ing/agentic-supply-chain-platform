@@ -20,11 +20,21 @@ class Runtime:
             VehicleSimulationService()
         )
 
+        # Traffic refresh interval
+        self.traffic_update_interval = 5 * 60  # 5 minutes
+
     async def run(self):
 
         last_tick = time.monotonic()
 
+        # Separate timer for traffic updates
+        last_traffic_update = time.monotonic()
+
         print("[RUNTIME] Simulation started.")
+
+        self.traffic_pipeline.update()
+
+        last_traffic_update = time.monotonic()
 
         while True:
 
@@ -45,6 +55,18 @@ class Runtime:
             world = world_manager.get_world()
 
             # --------------------------------------------------
+            # Update traffic every 5 minutes
+            # --------------------------------------------------
+
+            if now - last_traffic_update >= self.traffic_update_interval:
+
+                print("[RUNTIME] Updating traffic...")
+
+                self.traffic_pipeline.update()
+
+                last_traffic_update = now
+
+            # --------------------------------------------------
             # Advance vehicle simulation
             # --------------------------------------------------
 
@@ -52,10 +74,6 @@ class Runtime:
                 world=world,
                 dt_seconds=dt,
             )
-
-            # --------------------------------------------------
-            # Debug output
-            # --------------------------------------------------
 
             # --------------------------------------------------
             # Tick rate

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from models.traffic.traffic_incident import TrafficIncident
@@ -122,7 +122,7 @@ async def get_traffic_incidents() -> dict:
 
     world = world_manager.get_world()
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     incidents = []
 
@@ -150,7 +150,7 @@ async def get_traffic_incidents() -> dict:
                 "start_time": incident.start_time.isoformat(),
                 "end_time": (
                     incident.end_time.isoformat()
-                    if incident.end_time
+                    if incident.end_time is not None
                     else None
                 ),
             }
@@ -161,8 +161,6 @@ async def get_traffic_incidents() -> dict:
         "incident_count": len(incidents),
         "incidents": incidents,
     }
-
-
 # ============================================================
 # FIND AFFECTED ROUTES
 # ============================================================

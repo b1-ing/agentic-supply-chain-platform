@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from .vehicle import VehicleResponse
 from .order import OrderResponse
 from .route import RouteResponse
+from .traffic import TrafficIncidentResponse
 
 
 class WorldSummaryResponse(BaseModel):
@@ -23,6 +24,8 @@ class WorldResponse(BaseModel):
     summary: WorldSummaryResponse
 
     vehicles: list[VehicleResponse]
+
+    traffic_events: list[TrafficIncidentResponse]
 
     depots: list[Depot]
 

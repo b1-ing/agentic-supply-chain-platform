@@ -48,8 +48,6 @@ class TrafficPipeline:
 
         speed_bands = self.speed_band_service.fetch()
 
-        print(speed_bands[:5])
-
         ###############################################################
         # Match onto graph
         ###############################################################

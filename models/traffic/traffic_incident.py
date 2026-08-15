@@ -23,7 +23,7 @@ class TrafficIncident:
 
     longitude: float | None
 
-    start_time: datetime
+    start_time: datetime | None
 
     end_time: datetime | None
 

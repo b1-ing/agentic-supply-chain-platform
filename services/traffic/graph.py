@@ -156,13 +156,7 @@ class TrafficGraphService:
 
                 data["adjusted_travel_time"] = base * multiplier + traffic_penalty
 
-                print(data)
 
-            print(
-                f"[SpeedBands] matched={matched}, "
-                f"missing={missing}, "
-                f"total={matched + missing}"
-            )
 
     ####################################################################
     # Incidents
