@@ -5,7 +5,11 @@ from api.routes.world import WorldResponse, WorldSummaryResponse
 from api.routes.vehicles import serialize_vehicle
 from api.routes.depots import serialize_depot
 from api.routes.routes import serialize_route
-
+from api.routes.traffic import serialize_traffic_incident
+from api.schemas.world import (
+    WorldResponse,
+    WorldSummaryResponse,
+)
 
 
 def serialize_world(world) -> WorldResponse:
@@ -20,6 +24,8 @@ def serialize_world(world) -> WorldResponse:
             traffic_event_count=len(world.traffic_events),
         ),
 
+
+
         vehicles=[
             serialize_vehicle(vehicle)
             for vehicle in world.vehicles
@@ -28,6 +34,11 @@ def serialize_world(world) -> WorldResponse:
         depots=[
             serialize_depot(depot)
             for depot in world.depots
+        ],
+
+        traffic_events=[
+            serialize_traffic_incident(incident)
+            for incident in world.traffic_events
         ],
 
         new_orders=list(world.new_orders),

@@ -481,6 +481,7 @@ async def evaluate_compatibility(
     service = CompatibilityService()
 
     return await service.evaluate(
+        world,
         order_id,
     )
 

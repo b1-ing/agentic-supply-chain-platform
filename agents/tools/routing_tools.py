@@ -750,7 +750,7 @@ class SimpleRoutingTool:
 
         for waypoint in required_waypoints:
             waypoint_location = self._resolve_location(
-                self.world,
+                world,
                 waypoint,
             )
 
@@ -1036,7 +1036,6 @@ def decide_routing_strategy(
         ),
     }
 
-
 async def plan_routes():
 
     world = world_manager.get_world()
@@ -1057,13 +1056,27 @@ async def plan_routes():
                 "vehicle_id": route.vehicle_id,
                 "distance": route.total_distance,
                 "travel_time": route.total_travel_time,
+
                 "stops": [
                     {
                         "sequence": stop.sequence,
                         "lat": stop.location.lat,
                         "lon": stop.location.lon,
+                        "kind": stop.location.kind,
+                        "order_id": stop.location.order_id,
                     }
                     for stop in route.stops
+                ],
+
+                "segments": [
+                    {
+                        "nodes": segment.nodes,
+                        "geometry": segment.geometry,
+                        "distance": segment.distance,
+                        "travel_time": segment.travel_time,
+                        "instructions": segment.instructions,
+                    }
+                    for segment in route.segments
                 ],
             }
             for route in route_plan.routes
@@ -1096,14 +1109,15 @@ async def simple_fleet_route(order_id: str):
     # Evaluate compatibility
     # ---------------------------------------------------------
 
-    compatibility = await compatibility_service.evaluate(order_id)
 
-    print(compatibility)
+    compatibility = await compatibility_service.evaluate(
+        world,
+        order_id,
+    )
 
-    if not compatibility["success"]:
-        return compatibility
+    print("[COMPATIBILITY]", compatibility)
 
-    if compatibility["status"] == "UNSERVICEABLE":
+    if compatibility.status == CompatibilityStatus.UNSERVICEABLE:
         return {
             "success": False,
             "order_id": order_id,
@@ -1111,7 +1125,37 @@ async def simple_fleet_route(order_id: str):
             "error": "No compatible vehicle available.",
         }
 
-    vehicle_id = compatibility.get("recommended_vehicle_id")
+    if compatibility.status == CompatibilityStatus.WAITING:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "status": "WAITING",
+            "error": "No vehicle is currently available for this order.",
+        }
+
+    if compatibility.status != CompatibilityStatus.ROUTABLE:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "status": compatibility.status.value,
+            "error": "Order is not currently routable.",
+        }
+
+    # ---------------------------------------------------------
+    # Select recommended compatible vehicle
+    # ---------------------------------------------------------
+
+    if not compatibility.compatible:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "status": "UNSERVICEABLE",
+            "error": "Compatibility evaluation found no compatible vehicles.",
+        }
+
+    recommended = compatibility.compatible[0]
+
+    vehicle_id = recommended.vehicle_id
 
     if not vehicle_id:
         return {

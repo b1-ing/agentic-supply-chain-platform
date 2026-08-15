@@ -1,39 +1,45 @@
 from __future__ import annotations
 
 import networkx as nx
-import polyline
+from uuid import uuid4
+
+from models.order.routing_location import RoutingLocation
 from models.routing.route_plan import RoutePlan
 from models.routing.route_segment import RouteSegment
 from models.routing.route_stop import RouteStop
 from models.routing.travel_matrix import TravelMatrix
 from models.routing.vehicle_route import VehicleRoute
 from models.vehicles.vehicle import Vehicle
-from models.order.routing_location import RoutingLocation
-from services.routing.onemap_routing_service import OneMapRoutingService
-from uuid import uuid4
-
 from models.vehicles.vehicle import VehicleStatus
 
 
 class RouteBuilder:
-    """Converts the raw OR-Tools solution into domain models.
+    """
+    Converts the raw OR-Tools solution into domain routing models.
 
-    OR-Tools output:
+    OR-Tools produces matrix-index routes such as:
+
         [
             [0, 3, 5, 0],
             [1, 4, 2, 1],
         ]
 
-    becomes:
+    RouteBuilder converts these into:
+
         RoutePlan
             ├── VehicleRoute
             │     ├── RouteStops
             │     └── RouteSegments
             └── VehicleRoute
-    """
 
-    def __init__(self):
-        self.om_routing_service = OneMapRoutingService()
+    Important:
+    ----------
+    OR-Tools optimises using the WorldState routing graph.
+
+    Therefore this class also reconstructs route geometry and metrics
+    from that same graph rather than calling an external routing
+    provider such as OneMap.
+    """
 
     def build(
         self,
@@ -42,50 +48,67 @@ class RouteBuilder:
         vehicles: list[Vehicle],
         routes: list[list[int]],
     ) -> RoutePlan:
-        """Constructs a complete RoutePlan from raw optimization routes.
+        """
+        Convert OR-Tools routes into a RoutePlan.
 
         Args:
-            world: The world context containing the underlying routing graph.
-            travel_matrix: The distance/time matrix mapping locations to indices.
-            vehicles: A list of Vehicle objects assigned to the routes.
-            routes: A list of lists, where each sublist contains the sequence of
-                matrix indices representing a vehicle's route.
+            world:
+                Current WorldState containing the routing graph.
+
+            travel_matrix:
+                Matrix and RoutingLocation mapping used by OR-Tools.
+
+            vehicles:
+                Vehicles corresponding to the OR-Tools vehicle indices.
+
+            routes:
+                Raw matrix-index routes returned by OR-Tools.
 
         Returns:
-            A fully populated RoutePlan containing the routes for all vehicles
-            along with combined total distances and travel times.
-
-            RoutePlan consists of:
-                routes: list[VehicleRoute] (list of the routes of all vehicles)
-                total_distance: float
-                total_travel_time: float
-
+            RoutePlan containing all non-empty vehicle routes.
         """
+
         vehicle_routes: list[VehicleRoute] = []
 
         for vehicle, route in zip(vehicles, routes):
+
             vehicle_route = self._build_vehicle_route(
-                world,
-                travel_matrix,
-                vehicle,
-                route,
+                world=world,
+                travel_matrix=travel_matrix,
+                vehicle=vehicle,
+                route=route,
             )
+
             if vehicle_route is None:
                 continue
 
             vehicle_routes.append(vehicle_route)
 
-        vehicle_routes = [route for route in vehicle_routes if route.total_distance > 0]
+            # -----------------------------------------------------
+            # Assign orders to the vehicle
+            # -----------------------------------------------------
+
+            self._assign_orders(
+                world=world,
+                vehicle=vehicle,
+                stops=vehicle_route.stops,
+            )
 
         return RoutePlan(
             routes=vehicle_routes,
-            total_distance=sum(route.total_distance for route in vehicle_routes),
-            total_travel_time=sum(route.total_travel_time for route in vehicle_routes),
+            total_distance=sum(
+                route.total_distance
+                for route in vehicle_routes
+            ),
+            total_travel_time=sum(
+                route.total_travel_time
+                for route in vehicle_routes
+            ),
         )
 
-    ####################################################################
+    # =============================================================
     # Vehicle Route
-    ####################################################################
+    # =============================================================
 
     def _build_vehicle_route(
         self,
@@ -93,49 +116,53 @@ class RouteBuilder:
         travel_matrix: TravelMatrix,
         vehicle: Vehicle,
         route: list[int],
-    ) -> VehicleRoute:
-        """Builds a high-level route for a specific vehicle.
-
-        Args:
-            world: The world context containing the underlying routing graph.
-            travel_matrix: The matrix mapping indices to geographical locations.
-            vehicle: The Vehicle instance executing this route.
-            route: The sequence of matrix indices representing stops.
-
-        Returns:
-            A VehicleRoute domain object containing stops, detailed street-network
-            segments, and accumulated metrics.
-
-            VehicleRoute consists of:
-            vehicle_id: str (identifies the vehicle)
-            stops: list[RouteStop]
-            segments: list[RouteSegment]
-            total_distance
-            total_travel_time
-
+    ) -> VehicleRoute | None:
         """
-        stops = self._build_stops(
-            travel_matrix,
-            route,
-        )
+        Build a VehicleRoute from one OR-Tools vehicle route.
 
-        segments = self._build_segments(
-            world,
-            stops,
-        )
+        Empty routes such as:
 
-        # the below are self explanatory, calculating distance and travel times from each segments only
-        total_distance = sum(segment.distance for segment in segments)
+            [0, 0]
 
+        are ignored.
+        """
 
-        total_travel_time = sum(segment.travel_time for segment in segments)
-
-        if total_distance <= 0 or not segments:
+        if len(route) < 2:
             return None
 
+        stops = self._build_stops(
+            travel_matrix=travel_matrix,
+            route=route,
+        )
 
-        returned_route = VehicleRoute(
-            route_id=f"ROUTE-{uuid4().hex[:8].upper()}",
+        if len(stops) < 2:
+            return None
+
+        segments = self._build_segments(
+            world=world,
+            stops=stops,
+        )
+
+        if not segments:
+            return None
+
+        total_distance = sum(
+            segment.distance
+            for segment in segments
+        )
+
+        total_travel_time = sum(
+            segment.travel_time
+            for segment in segments
+        )
+
+        if total_distance <= 0:
+            return None
+
+        route_id = f"ROUTE-{uuid4().hex[:8].upper()}"
+
+        vehicle_route = VehicleRoute(
+            route_id=route_id,
             vehicle_id=vehicle.vehicle_id,
             stops=stops,
             segments=segments,
@@ -143,40 +170,44 @@ class RouteBuilder:
             total_travel_time=total_travel_time,
         )
 
-        vehicle.current_route_id = returned_route.route_id
-        vehicle.current_route = returned_route
+        # ---------------------------------------------------------
+        # Update vehicle operational state
+        # ---------------------------------------------------------
+
+        vehicle.current_route_id = route_id
+        vehicle.current_route = vehicle_route
         vehicle.status = VehicleStatus.EN_ROUTE
 
-        return returned_route
+        return vehicle_route
 
-        ####################################################################
+    # =============================================================
     # Stops
-    ####################################################################
+    # =============================================================
 
     def _build_stops(
         self,
         travel_matrix: TravelMatrix,
         route: list[int],
     ) -> list[RouteStop]:
-        """Maps raw matrix route indices to a sequence of domain RouteStop objects.
-
-        Args:
-            travel_matrix: The matrix mapping indices to geographical locations.
-            route: The ordered sequence of matrix indices.
-
-        Returns:
-            A list of RouteStop objects with assigned sequences and location data.
-
-            RouteStop object consists of:
-            sequence:int
-            location: RoutingLocation
-            arrival_time
-            departure_time
-            load_after_stop
         """
+        Convert matrix indices into RouteStop objects.
+        """
+
         stops: list[RouteStop] = []
 
         for sequence, matrix_index in enumerate(route):
+
+            if matrix_index < 0:
+                raise ValueError(
+                    f"Invalid negative matrix index: {matrix_index}"
+                )
+
+            if matrix_index >= len(travel_matrix.locations):
+                raise IndexError(
+                    f"Matrix index {matrix_index} is outside "
+                    f"the location list."
+                )
+
             location = travel_matrix.locations[matrix_index]
 
             stops.append(
@@ -188,6 +219,10 @@ class RouteBuilder:
 
         return stops
 
+    # =============================================================
+    # Segments
+    # =============================================================
+
     ####################################################################
     # Segments
     ####################################################################
@@ -197,26 +232,16 @@ class RouteBuilder:
         world,
         stops: list[RouteStop],
     ) -> list[RouteSegment]:
-        """Generates detailed street-level route segments between all sequential stops.
 
-        Args:
-            world: The world context containing the underlying routing graph.
-            stops: A list of RouteStop objects representing the visited locations.
-
-        Returns:
-            A list of RouteSegment objects connecting the stops. Returns an empty
-            list if there are fewer than two stops.
-        """
         segments: list[RouteSegment] = []
 
         if len(stops) < 2:
             return segments
 
-        for current, nxt in zip(
-            stops,
-            stops[1:],
-        ):
+        for current, nxt in zip(stops, stops[1:]):
+
             segment = self._build_segment(
+                world,
                 current.location,
                 nxt.location,
             )
@@ -227,41 +252,173 @@ class RouteBuilder:
 
     def _build_segment(
         self,
+        world,
         from_location: RoutingLocation,
         to_location: RoutingLocation,
     ) -> RouteSegment:
         """
-        Builds a RouteSegment between two routing locations using the
-        configured routing provider (OneMap).
+        Build a detailed route segment using the WorldState graph.
 
-        Args:
-            from_location: Starting routing location.
-            to_location: Destination routing location.
-
-        Returns:
-            RouteSegment containing the road geometry, travel time and distance.
+        OR-Tools determines the sequence of stops.
+        This method determines the actual road-level path
+        between each pair of stops.
         """
 
-        route = self.om_routing_service.route(
-            start_lat=from_location.lat,
-            start_lon=from_location.lon,
-            end_lat=to_location.lat,
-            end_lon=to_location.lon,
-        )
+        if from_location.graph_node is None:
+            raise ValueError(
+                "Origin routing location has no graph node."
+            )
 
+        if to_location.graph_node is None:
+            raise ValueError(
+                "Destination routing location has no graph node."
+            )
 
-        decoded = polyline.decode(route["route_geometry"])
+        graph = world.graph
+
+        # ---------------------------------------------------------
+        # Find shortest path on WorldState graph
+        # ---------------------------------------------------------
+
+        try:
+            path = nx.shortest_path(
+                graph,
+                from_location.graph_node,
+                to_location.graph_node,
+                weight="travel_time",
+            )
+
+        except nx.NetworkXNoPath as exc:
+            raise RuntimeError(
+                f"No route between graph nodes "
+                f"{from_location.graph_node} and "
+                f"{to_location.graph_node}."
+            ) from exc
+
+        # ---------------------------------------------------------
+        # Build metrics + geometry
+        # ---------------------------------------------------------
+
+        total_distance = 0.0
+        total_travel_time = 0.0
+
+        geometry = []
+
+        for u, v in zip(path, path[1:]):
+
+            edge = self._best_edge(
+                graph,
+                u,
+                v,
+            )
+
+            total_distance += float(
+                edge.get(
+                    "length",
+                    edge.get("distance", 0.0),
+                )
+            )
+
+            total_travel_time += float(
+                edge.get(
+                    "travel_time",
+                    0.0,
+                )
+            )
+
+            edge_geometry = edge.get("geometry")
+
+            if edge_geometry is not None:
+
+                coords = list(
+                    edge_geometry.coords
+                )
+
+                if geometry:
+                    geometry.extend(
+                        coords[1:]
+                    )
+                else:
+                    geometry.extend(coords)
+
+            else:
+
+                # Fallback when OSM edge has no geometry.
+                u_data = graph.nodes[u]
+                v_data = graph.nodes[v]
+
+                u_coord = (
+                    u_data["x"],
+                    u_data["y"],
+                )
+
+                v_coord = (
+                    v_data["x"],
+                    v_data["y"],
+                )
+
+                if not geometry:
+                    geometry.append(u_coord)
+
+                geometry.append(v_coord)
 
         return RouteSegment(
-            geometry=decoded,
-            travel_time=route["route_summary"]["total_time"],
-            distance=route["route_summary"]["total_distance"],
-            instructions=route["route_instructions"],
+            nodes=path,
+            geometry=geometry,
+            distance=total_distance,
+            travel_time=total_travel_time,
+            instructions=[],
         )
 
-    ####################################################################
-    # Helpers
-    ####################################################################
+    # =============================================================
+    # Order assignment
+    # =============================================================
+
+    def _assign_orders(
+        self,
+        world,
+        vehicle: Vehicle,
+        stops: list[RouteStop],
+    ) -> None:
+        """
+        Assign every order appearing in this vehicle's route to
+        the vehicle.
+
+        Pickup and delivery locations contain order_id, allowing
+        us to determine which orders OR-Tools assigned to this
+        vehicle.
+        """
+
+        order_ids: set[str] = set()
+
+        for stop in stops:
+
+            location = stop.location
+
+            if (
+                location.order_id
+                and location.kind in {
+                    "pickup",
+                    "delivery",
+                }
+            ):
+                order_ids.add(
+                    location.order_id
+                )
+
+        if not order_ids:
+            return
+
+        for order in world.new_orders:
+
+            if order.order_id in order_ids:
+                order.assigned_vehicle = (
+                    vehicle.vehicle_id
+                )
+
+    # =============================================================
+    # Graph helpers
+    # =============================================================
 
     @staticmethod
     def _best_edge(
@@ -269,34 +426,39 @@ class RouteBuilder:
         u,
         v,
     ):
-        """Retrieves the edge data between two nodes, choosing the fastest if duplicates exist.
-
-        Supports both standard NetworkX DiGraph and MultiDiGraph structures. For
-        parallel edges in a MultiDiGraph, it selects the edge with the lowest
-        `travel_time`.
-
-        Args:
-            graph: The NetworkX graph containing the edge.
-            u: The source node ID.
-            v: The target node ID.
-
-        Returns:
-            dict: The dictionary containing the chosen edge's properties.
-
-        Raises:
-            RuntimeError: If no edge exists between node `u` and node `v`.
         """
-        edge = graph.get_edge_data(u, v)
+        Return the fastest edge between two nodes.
 
-        if edge is None:
-            raise RuntimeError(f"No edge exists between {u} and {v}")
+        Supports both:
 
-        if "travel_time" in edge:
-            return edge
+            DiGraph
+            MultiDiGraph
+        """
+
+        edge_data = graph.get_edge_data(
+            u,
+            v,
+        )
+
+        if edge_data is None:
+            raise RuntimeError(
+                f"No edge exists between {u} and {v}."
+            )
+
+        # ---------------------------------------------------------
+        # Standard DiGraph
+        # ---------------------------------------------------------
+
+        if "travel_time" in edge_data:
+            return edge_data
+
+        # ---------------------------------------------------------
+        # MultiDiGraph
+        # ---------------------------------------------------------
 
         return min(
-            edge.values(),
-            key=lambda e: e.get(
+            edge_data.values(),
+            key=lambda edge: edge.get(
                 "travel_time",
                 float("inf"),
             ),

@@ -10,6 +10,7 @@ from models.routing.travel_matrix import TravelMatrix
 class MatrixService:
     def build(
         self,
+        graph,
         world,
         locations: list[RoutingLocation],
     ) -> TravelMatrix:
@@ -23,7 +24,7 @@ class MatrixService:
 
         for i, source in enumerate(locations):
             lengths = nx.single_source_dijkstra_path_length(
-                world.graph,
+                graph,
                 source.graph_node,
                 weight="travel_time",
             )

@@ -1,11 +1,19 @@
-from models.routing.route_plan import RoutePlan
-from services.routing.matrix_service import MatrixService
+from __future__ import annotations
 
+from models.routing.route_plan import RoutePlan
+from models.routing.compatibility_result import (
+    CompatibilityResult,
+    CompatibilityStatus,
+)
+from models.routing.compatible_vehicle import CompatibleVehicle
+from models.routing.incompatible_vehicle import IncompatibleVehicle
+
+from services.routing.matrix_service import MatrixService
 from services.routing.problem_builder import RoutingProblemBuilder
 from services.routing.route_builder import RouteBuilder
-from routing.or_tools_solver import ORToolsSolver
 from services.routing.compatibility_service import CompatibilityService
-from models.routing.compatibility_result import CompatibilityStatus
+
+from routing.or_tools_solver import ORToolsSolver
 
 
 class RoutingService:
@@ -14,20 +22,28 @@ class RoutingService:
 
     Responsibilities
     ----------------
-    - Build routing problem
-    - Build travel matrix
-    - Invoke ORTools
-    - Convert solution into RoutePlan
+    - Evaluate vehicle compatibility for new orders.
+    - Store compatibility results in WorldState.
+    - Build the fleet-wide routing problem.
+    - Build the travel-time matrix.
+    - Solve the pickup/delivery CVRP using OR-Tools.
+    - Convert the solution into a RoutePlan.
+    - Commit successful routes/orders to WorldState.
+
+    This is the fleet-wide equivalent of simple_fleet_route().
     """
 
     def __init__(self):
 
+        self.compatibility_service = CompatibilityService()
         self.problem_builder = RoutingProblemBuilder()
         self.matrix_service = MatrixService()
         self.solver = ORToolsSolver()
         self.route_builder = RouteBuilder()
-        self.compatibility_service = CompatibilityService()
 
+    # ================================================================
+    # PUBLIC API
+    # ================================================================
     async def plan_routes(
         self,
         world,
@@ -36,38 +52,63 @@ class RoutingService:
         for order in list(world.new_orders):
 
             compatibility = await self.compatibility_service.evaluate(
-                order.order_id
+                world,
+                order.order_id,
             )
 
-            if compatibility["status"] == "UNSERVICEABLE":
-                    return {
-                        "success": False,
-                        "order_id": order.order_id,
-                        "status": "UNSERVICEABLE",
-                        "error": "No compatible vehicle available.",
-                    }
+            # Store the typed compatibility result
+            world.compatibility_results[order.order_id] = compatibility
 
-            vehicle_id = compatibility.get("recommended_vehicle_id")
+            # ---------------------------------------------------------
+            # UNSERVICEABLE
+            # ---------------------------------------------------------
 
-            if not vehicle_id:
+            if compatibility.status == CompatibilityStatus.UNSERVICEABLE:
+                world.new_orders.remove(order)
+                world.unserviceable_orders.append(order)
+
                 return {
                     "success": False,
                     "order_id": order.order_id,
                     "status": "UNSERVICEABLE",
-                    "error": "Compatibility evaluation did not select a vehicle.",
+                    "error": "No compatible vehicle available.",
                 }
-            world.new_orders.remove(order)
-            world.unserviceable_orders.append(order)
+
+            # ---------------------------------------------------------
+            # WAITING
+            # ---------------------------------------------------------
+
+            if compatibility.status == CompatibilityStatus.WAITING:
+                continue
+
+            # ---------------------------------------------------------
+            # ROUTABLE
+            # ---------------------------------------------------------
+
+            if compatibility.status != CompatibilityStatus.ROUTABLE:
+                continue
+
+        # -------------------------------------------------------------
+        # Build CVRP problem
+        # -------------------------------------------------------------
 
         problem = self.problem_builder.build(
             world,
         )
 
+        # -------------------------------------------------------------
+        # Build travel matrix
+        # -------------------------------------------------------------
+
         matrix = self.matrix_service.build(
+            world.graph,
             world,
             problem.locations,
         )
 
+        # -------------------------------------------------------------
+        # Solve CVRP
+        # -------------------------------------------------------------
 
         routes = self.solver.solve(
             matrix=matrix.matrix,
@@ -79,11 +120,316 @@ class RoutingService:
         )
 
         if routes is None:
-            raise RuntimeError("No feasible routing solution found.")
+            raise RuntimeError(
+                "No feasible routing solution found."
+            )
 
-        return self.route_builder.build(
+        # -------------------------------------------------------------
+        # Build domain RoutePlan
+        # -------------------------------------------------------------
+
+        route_plan = self.route_builder.build(
             world=world,
             routes=routes,
             travel_matrix=matrix,
             vehicles=problem.vehicles,
         )
+
+        self._commit_route_plan(
+            world,
+            route_plan,
+        )
+
+        return route_plan
+
+    # ================================================================
+    # COMPATIBILITY
+    # ================================================================
+
+    async def _evaluate_orders(
+        self,
+        world,
+    ) -> dict:
+        """
+        Evaluate compatibility for every new order and store the
+        result in WorldState.compatibility_results.
+
+        The LLM compatibility response is converted into the
+        application's CompatibilityResult model here.
+        """
+
+        for order in list(world.new_orders):
+            if (
+                order.pickup_node is None
+                or order.delivery_node is None
+            ):
+                print(
+                    f"Skipping order {order.order_id}: "
+                    "missing pickup or delivery graph node."
+                )
+                continue
+
+            result = await self.compatibility_service.evaluate(
+                world,
+                order.order_id
+            )
+
+            if not result.get("success", False):
+
+                return {
+                    "success": False,
+                    "status": "COMPATIBILITY_ERROR",
+                    "order_id": order.order_id,
+                    "error": result.get(
+                        "error",
+                        "Compatibility evaluation failed.",
+                    ),
+                }
+
+            status = self._map_compatibility_status(
+                result.get("status")
+            )
+
+            if status is None:
+
+                return {
+                    "success": False,
+                    "status": "COMPATIBILITY_ERROR",
+                    "order_id": order.order_id,
+                    "error": (
+                        "Unknown compatibility status: "
+                        f"{result.get('status')}"
+                    ),
+                }
+
+            compatible = [
+                CompatibleVehicle(
+                    vehicle_id=item["vehicle_id"],
+                    reason=item["reason"],
+                )
+                for item in result.get(
+                    "compatible",
+                    [],
+                )
+            ]
+
+            incompatible = [
+                IncompatibleVehicle(
+                    vehicle_id=item["vehicle_id"],
+                    reason=item["reason"],
+                )
+                for item in result.get(
+                    "incompatible",
+                    [],
+                )
+            ]
+
+            # --------------------------------------------------------
+            # IMPORTANT:
+            #
+            # Do not calculate vehicle indices here.
+            #
+            # The ProblemBuilder is responsible for converting
+            # vehicle IDs into indices after it selects the actual
+            # vehicle list used by OR-Tools.
+            # --------------------------------------------------------
+
+            world.compatibility_results[
+                order.order_id
+            ] = CompatibilityResult(
+                order_id=order.order_id,
+                compatible=compatible,
+                incompatible=incompatible,
+                allowed_vehicle_indices=[],
+                status=status,
+            )
+
+        return {
+            "success": True
+        }
+
+    @staticmethod
+    def _map_compatibility_status(
+        status: str | None,
+    ) -> CompatibilityStatus | None:
+        """
+        Map CompatibilityAgent statuses onto domain statuses.
+
+        Agent:
+            ROUTABLE
+            UNSERVICEABLE
+            UNCERTAIN
+
+        Domain:
+            ROUTABLE
+            WAITING
+            UNSERVICEABLE
+        """
+
+        if status == "ROUTABLE":
+            return CompatibilityStatus.ROUTABLE
+
+        if status == "UNSERVICEABLE":
+            return CompatibilityStatus.UNSERVICEABLE
+
+        if status == "UNCERTAIN":
+            return CompatibilityStatus.WAITING
+
+        return None
+
+    # ================================================================
+    # ORDER STATE
+    # ================================================================
+
+    @staticmethod
+    def _get_routable_orders(
+        world,
+    ):
+        """
+        Return orders that have successfully passed compatibility.
+        """
+
+        return [
+            order
+            for order in world.new_orders
+            if (
+                order.order_id
+                in world.compatibility_results
+                and
+                world.compatibility_results[
+                    order.order_id
+                ].status
+                == CompatibilityStatus.ROUTABLE
+            )
+        ]
+
+    @staticmethod
+    def _move_unserviceable_orders(
+        world,
+    ) -> None:
+        """
+        Move orders that cannot be serviced into
+        WorldState.unserviceable_orders.
+
+        Routable and waiting orders remain in new_orders.
+        """
+
+        for order in list(world.new_orders):
+
+            result = world.compatibility_results.get(
+                order.order_id
+            )
+
+            if result is None:
+                continue
+
+            if result.status != CompatibilityStatus.UNSERVICEABLE:
+                continue
+
+            world.new_orders.remove(order)
+
+            if order not in world.unserviceable_orders:
+                world.unserviceable_orders.append(
+                    order
+                )
+
+    # ================================================================
+    # WORLD STATE COMMIT
+    # ================================================================
+
+    @staticmethod
+    def _commit_route_plan(
+        world,
+        route_plan: RoutePlan,
+    ) -> None:
+        """
+        Commit a successfully generated RoutePlan.
+
+        RouteBuilder is responsible for attaching the generated
+        VehicleRoute to the vehicle.
+
+        This method handles order lifecycle and WorldState.routes.
+        """
+
+        routed_order_ids = set()
+
+        for vehicle_route in route_plan.routes:
+
+            for stop in vehicle_route.stops:
+
+                location = stop.location
+
+                if (
+                    location.order_id is not None
+                    and location.kind in (
+                        "pickup",
+                        "delivery",
+                    )
+                ):
+                    routed_order_ids.add(
+                        location.order_id
+                    )
+
+        # ------------------------------------------------------------
+        # Move successfully routed orders
+        # ------------------------------------------------------------
+
+        for order in list(world.new_orders):
+
+            if order.order_id not in routed_order_ids:
+                continue
+
+            world.new_orders.remove(order)
+
+            if order not in world.orders_in_progress:
+                world.orders_in_progress.append(
+                    order
+                )
+
+            # The route now owns this assignment.
+            # Vehicle assignment is handled below through the
+            # generated VehicleRoute.
+
+        # ------------------------------------------------------------
+        # Assign orders to their actual vehicle
+        # ------------------------------------------------------------
+
+        for vehicle_route in route_plan.routes:
+
+            for stop in vehicle_route.stops:
+
+                location = stop.location
+
+                if location.order_id is None:
+                    continue
+
+                order = next(
+                    (
+                        candidate
+                        for candidate in world.orders_in_progress
+                        if candidate.order_id
+                        == location.order_id
+                    ),
+                    None,
+                )
+
+                if order is not None:
+                    order.assigned_vehicle = (
+                        vehicle_route.vehicle_id
+                    )
+
+        # ------------------------------------------------------------
+        # Add routes to WorldState exactly once
+        # ------------------------------------------------------------
+
+        existing_route_ids = {
+            route.route_id
+            for route in world.routes
+        }
+
+        for vehicle_route in route_plan.routes:
+
+            if vehicle_route.route_id not in existing_route_ids:
+                world.routes.append(
+                    vehicle_route
+                )

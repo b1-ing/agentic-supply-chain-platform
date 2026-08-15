@@ -128,13 +128,22 @@ async def get_traffic_incidents() -> dict:
 
     for incident in world.traffic_events:
 
-        if now < incident.start_time:
+        start_time = incident.start_time
+        end_time = incident.end_time
+
+        # Normalize naive datetimes to UTC.
+        if start_time is not None and start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+
+        if end_time is not None and end_time.tzinfo is None:
+            end_time = end_time.replace(tzinfo=timezone.utc)
+
+        # Not started yet
+        if start_time is not None and now < start_time:
             continue
 
-        if (
-            incident.end_time is not None
-            and now > incident.end_time
-        ):
+        # Already ended
+        if end_time is not None and now > end_time:
             continue
 
         incidents.append(
