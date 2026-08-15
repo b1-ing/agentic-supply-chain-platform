@@ -10,6 +10,7 @@ class RoutePointResponse(BaseModel):
     kind: str
 
     order_id: str | None = None
+
     vehicle_id: str | None = None
 
 
@@ -21,6 +22,7 @@ class RouteSegmentResponse(BaseModel):
 
 
 class RouteResponse(BaseModel):
+    route_id: str | None = None
     vehicle_id: str
 
     stops: list[RoutePointResponse]

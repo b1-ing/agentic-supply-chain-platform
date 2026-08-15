@@ -27,6 +27,10 @@ class Vehicle(BaseModel, ABC):
     current_lat: Optional[float] = None
     current_lon: Optional[float] = None
 
+    completed_stop_sequence: int = -1
+
+    last_completed_route_id: str | None = None
+
     current_route: VehicleRoute | None = None
 
     max_weight_kg: float

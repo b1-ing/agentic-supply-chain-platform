@@ -26,6 +26,8 @@ router = APIRouter(
 )
 def get_world(
     world: WorldState = Depends(get_world),
+
+
 ):
 
     return WorldResponse(

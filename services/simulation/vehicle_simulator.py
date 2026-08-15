@@ -1,47 +1,84 @@
+
 from __future__ import annotations
 
 import math
 from typing import Any
 
-from shapely.geometry import LineString, Point
+import osmnx as ox
 
 
 class VehicleSimulationService:
     """
     Advances vehicles along their currently assigned routes.
 
-    The simulator is deliberately separate from routing/planning:
-      - Planner decides which route a vehicle should take.
-      - RouteBuilder constructs the route geometry.
-      - This service only advances the vehicle along that route.
-      - WorldState remains the source of truth.
+    Responsibilities
+    ----------------
+    - Advance vehicles according to simulation time.
+    - Move vehicles through route segments.
+    - Update vehicle latitude/longitude.
+    - Update vehicle.current_node.
+    - Track route progress.
+    - Track completed route stops.
+    - Mark routes as completed.
 
-    Expected vehicle attributes:
-        vehicle_id
-        route_id
-        current_lat
-        current_lon
-        route_progress_m
-        status
+    Routing/planning is NOT performed here.
 
-    Expected route structure:
-        route.segments
+    WorldState remains the source of truth.
 
-    Expected segment structure:
-        segment.geometry -> Shapely LineString
-        segment.travel_time_s (optional)
-        segment.distance_m (optional)
+    Expected Vehicle attributes
+    ---------------------------
+    vehicle_id
+    current_route_id
+    current_route
+    current_node
+    current_lat
+    current_lon
+    route_progress_m
+    completed_stop_sequence
+    status
 
-    Geometry is assumed to be WGS84:
+    Expected VehicleRoute attributes
+    --------------------------------
+    route_id
+    vehicle_id
+    stops
+    segments
+    total_distance
+    total_travel_time
+
+    Expected RouteSegment attributes
+    --------------------------------
+    nodes
+    geometry
+    distance
+    travel_time
+
+    Geometry convention
+    -------------------
+    RouteSegment.geometry uses:
+
+        [(longitude, latitude), ...]
+
+    Frontend routes may serialize this as:
+
+        [[latitude, longitude], ...]
+
+    The simulator always works with the WorldState representation:
         (longitude, latitude)
     """
 
     EARTH_RADIUS_M = 6_371_000.0
 
+    DEFAULT_SPEED_MPS = 10.0
+
+    # ============================================================
+    # PUBLIC API
+    # ============================================================
+
     def update(
-            self,
-            world: Any,
-            dt_seconds: float,
+        self,
+        world: Any,
+        dt_seconds: float,
     ) -> None:
         """
         Advance every active vehicle by dt_seconds.
@@ -54,21 +91,29 @@ class VehicleSimulationService:
 
         for vehicle in getattr(world, "vehicles", []):
             self._update_vehicle(
+                world=world,
                 vehicle=vehicle,
                 routes=routes,
                 dt_seconds=dt_seconds,
             )
 
-    # ------------------------------------------------------------------
-    # Vehicle update
-    # ------------------------------------------------------------------
+    # ============================================================
+    # VEHICLE UPDATE
+    # ============================================================
 
     def _update_vehicle(
-            self,
-            vehicle: Any,
-            routes: Any,
-            dt_seconds: float,
+        self,
+        world: Any,
+        vehicle: Any,
+        routes: Any,
+        dt_seconds: float,
     ) -> None:
+
+        vehicle_id = getattr(
+            vehicle,
+            "vehicle_id",
+            "UNKNOWN",
+        )
 
         route_id = getattr(
             vehicle,
@@ -76,7 +121,9 @@ class VehicleSimulationService:
             None,
         )
 
-        print("route_id", route_id)
+        # --------------------------------------------------------
+        # Vehicle has no active route.
+        # --------------------------------------------------------
 
         if route_id is None:
             return
@@ -86,7 +133,19 @@ class VehicleSimulationService:
             route_id,
         )
 
+        # Compatibility fallback.
         if route is None:
+            route = getattr(
+                vehicle,
+                "current_route",
+                None,
+            )
+
+        if route is None:
+            print(
+                f"[SIM] {vehicle_id}: "
+                f"route {route_id} not found."
+            )
             return
 
         segments = getattr(
@@ -96,70 +155,138 @@ class VehicleSimulationService:
         )
 
         if not segments:
+            print(
+                f"[SIM] {vehicle_id}: "
+                f"route {route_id} has no segments."
+            )
             return
 
-        progress = float(
+        # --------------------------------------------------------
+        # Do not move vehicles that are not operationally active.
+        # --------------------------------------------------------
+
+        status = str(
+            getattr(
+                vehicle,
+                "status",
+                "",
+            )
+        ).upper()
+
+        if status in {
+            "IDLE",
+            "AVAILABLE",
+            "COMPLETED",
+            "CANCELLED",
+            "OUT_OF_SERVICE",
+        }:
+            return
+
+        # --------------------------------------------------------
+        # Current route progress.
+        # --------------------------------------------------------
+
+        progress = self._safe_float(
             getattr(
                 vehicle,
                 "route_progress_m",
                 0.0,
-            )
-            or 0.0
+            ),
+            default=0.0,
         )
 
-        # Determine how far the vehicle should travel
-        # during this simulation tick.
+        # --------------------------------------------------------
+        # Determine vehicle speed.
+        # --------------------------------------------------------
+
+        speed_mps = self._vehicle_speed_mps(
+            vehicle=vehicle,
+            route=route,
+            progress_m=progress,
+        )
+
+        if speed_mps <= 0:
+            return
+
         distance_to_travel = (
-                self._vehicle_speed_mps(
-                    vehicle=vehicle,
-                    route=route,
-                    progress_m=progress,
-                )
-                * dt_seconds
+            speed_mps * dt_seconds
         )
 
         if distance_to_travel <= 0:
             return
 
-        new_progress = (
-                progress
-                + distance_to_travel
-        )
+        # --------------------------------------------------------
+        # Determine total route length.
+        # --------------------------------------------------------
 
         route_length = self._route_length(
             segments
         )
 
-        # Route has been completed.
-        if (
-                route_length > 0
-                and new_progress >= route_length
-        ):
+        if route_length <= 0:
+            print(
+                f"[SIM] {vehicle_id}: "
+                f"route {route_id} has zero length."
+            )
+            return
+
+        # --------------------------------------------------------
+        # Advance progress.
+        # --------------------------------------------------------
+
+        new_progress = (
+            progress
+            + distance_to_travel
+        )
+
+        # ========================================================
+        # ROUTE COMPLETE
+        # ========================================================
+
+        if new_progress >= route_length:
+
             new_progress = route_length
 
             self._set_vehicle_position_at_progress(
+                world=world,
+                vehicle=vehicle,
+                segments=segments,
+                progress_m=new_progress,
+            )
+
+            self._set_attribute(
                 vehicle,
-                segments,
+                "route_progress_m",
                 new_progress,
             )
 
-            print(
-                f"[SIM] {vehicle.vehicle_id}: "
-                f"progress={new_progress:.1f}m "
-                f"lat={vehicle.current_lat} "
-                f"lon={vehicle.current_lon}"
+            self._update_completed_stops(
+                vehicle=vehicle,
+                route=route,
+                progress_m=new_progress,
             )
 
             self._mark_route_complete(
-                vehicle
+                vehicle=vehicle,
+                route=route,
+            )
+
+            print(
+                f"[SIM] {vehicle_id}: "
+                f"completed route {route_id}"
             )
 
             return
 
+        # ========================================================
+        # NORMAL MOVEMENT
+        # ========================================================
+
         self._set_vehicle_position_at_progress(
-            vehicle,
-            segments,
-            new_progress,
+            world=world,
+            vehicle=vehicle,
+            segments=segments,
+            progress_m=new_progress,
         )
 
         self._set_attribute(
@@ -168,34 +295,38 @@ class VehicleSimulationService:
             new_progress,
         )
 
+        self._update_completed_stops(
+            vehicle=vehicle,
+            route=route,
+            progress_m=new_progress,
+        )
+
         self._set_attribute(
             vehicle,
             "status",
             "EN_ROUTE",
         )
 
-    # ------------------------------------------------------------------
-    # Speed
-    # ------------------------------------------------------------------
+
+    # ============================================================
+    # SPEED
+    # ============================================================
 
     def _vehicle_speed_mps(
-            self,
-            vehicle: Any,
-            route: Any,
-            progress_m: float,
+        self,
+        vehicle: Any,
+        route: Any,
+        progress_m: float,
     ) -> float:
         """
-        Determine current vehicle speed.
+        Determine current simulation speed.
 
         Priority:
 
-        1. Segment's current travel time, if available.
-        2. Segment's distance / travel time.
-        3. Vehicle's configured speed.
-        4. A conservative default.
-
-        This allows traffic updates to naturally affect
-        simulated vehicle movement.
+        1. Current route segment distance / travel time.
+        2. vehicle.speed_mps.
+        3. vehicle.speed_kmh.
+        4. DEFAULT_SPEED_MPS.
         """
 
         segments = getattr(
@@ -220,36 +351,43 @@ class VehicleSimulationService:
             )
 
             if (
-                    distance is not None
-                    and travel_time is not None
-                    and travel_time > 0
+                distance is not None
+                and travel_time is not None
+                and travel_time > 0
             ):
-                return (
-                        distance
-                        / travel_time
+
+                speed = (
+                    distance
+                    / travel_time
                 )
 
-        # Try vehicle's configured speed.
-        speed = getattr(
+                if speed > 0:
+                    return speed
+
+        # --------------------------------------------------------
+        # Vehicle speed_mps
+        # --------------------------------------------------------
+
+        speed_mps = getattr(
             vehicle,
             "speed_mps",
             None,
         )
 
-        if speed is not None:
+        if speed_mps is not None:
 
-            try:
-                return max(
-                    0.0,
-                    float(speed),
-                )
-            except (
-                    TypeError,
-                    ValueError,
-            ):
-                pass
+            speed = self._safe_float(
+                speed_mps,
+                default=0.0,
+            )
 
-        # Try km/h representation.
+            if speed > 0:
+                return speed
+
+        # --------------------------------------------------------
+        # Vehicle speed_kmh
+        # --------------------------------------------------------
+
         speed_kmh = getattr(
             vehicle,
             "speed_kmh",
@@ -258,33 +396,33 @@ class VehicleSimulationService:
 
         if speed_kmh is not None:
 
-            try:
-                return max(
-                    0.0,
-                    float(speed_kmh)
-                    / 3.6,
-                    )
-            except (
-                    TypeError,
-                    ValueError,
-            ):
-                pass
+            speed = self._safe_float(
+                speed_kmh,
+                default=0.0,
+            )
 
-        # Default simulation speed.
-        return 10.0
+            if speed > 0:
+                return speed / 3.6
 
-    # ------------------------------------------------------------------
-    # Route geometry
-    # ------------------------------------------------------------------
+        return self.DEFAULT_SPEED_MPS
+
+    # ============================================================
+    # POSITION
+    # ============================================================
 
     def _set_vehicle_position_at_progress(
-            self,
-            vehicle: Any,
-            segments: list[Any],
-            progress_m: float,
+        self,
+        world: Any,
+        vehicle: Any,
+        segments: list[Any],
+        progress_m: float,
     ) -> None:
         """
-        Convert route distance into a lat/lon position.
+        Convert total route progress into a geographic position.
+
+        Route geometry is represented as:
+
+            [(lon, lat), ...]
         """
 
         segment, local_distance = (
@@ -303,93 +441,127 @@ class VehicleSimulationService:
             None,
         )
 
-        if geometry is None:
+        if not geometry:
             return
 
-        point = self._point_along_linestring(
-            geometry,
-            local_distance,
+        point = self._point_along_geometry(
+            geometry=geometry,
+            distance_m=local_distance,
         )
 
         if point is None:
             return
 
-        # Shapely uses:
-        #     x = longitude
-        #     y = latitude
-        #
-        # Frontend uses:
-        #     [latitude, longitude]
+        lon, lat = point
+
+        # --------------------------------------------------------
+        # Update geographic position.
+        # --------------------------------------------------------
 
         self._set_attribute(
             vehicle,
             "current_lon",
-            float(point.x),
+            lon,
         )
 
         self._set_attribute(
             vehicle,
             "current_lat",
-            float(point.y),
+            lat,
         )
 
-        # Some projects use a tuple position instead.
-        if hasattr(vehicle, "position"):
+        # --------------------------------------------------------
+        # Optional tuple position.
+        #
+        # Project convention:
+        #     (lat, lon)
+        # --------------------------------------------------------
+
+        if hasattr(
+            vehicle,
+            "position",
+        ):
+
             try:
+
                 self._set_attribute(
                     vehicle,
                     "position",
                     (
-                        float(point.y),
-                        float(point.x),
+                        lat,
+                        lon,
                     ),
                 )
+
             except Exception:
                 pass
 
-    def _point_along_linestring(
-            self,
-            geometry: Any,
-            distance_m: float,
-    ) -> Point | None:
+        # --------------------------------------------------------
+        # Update graph node.
+        #
+        # Future rerouting uses current_node as the starting
+        # graph node.
+        # --------------------------------------------------------
+
+        try:
+
+            nearest_node = ox.distance.nearest_nodes(
+                world.graph,
+                lon,
+                lat,
+            )
+
+            self._set_attribute(
+                vehicle,
+                "current_node",
+                nearest_node,
+            )
+
+        except Exception as exc:
+
+            print(
+                f"[SIM] {getattr(vehicle, 'vehicle_id', 'UNKNOWN')}: "
+                f"failed to update current_node: {exc}"
+            )
+
+    # ============================================================
+    # POINT ALONG GEOMETRY
+    # ============================================================
+
+    def _point_along_geometry(
+        self,
+        geometry: Any,
+        distance_m: float,
+    ) -> tuple[float, float] | None:
         """
-        Return a point approximately `distance_m` metres
-        along a WGS84 LineString.
+        Return (lon, lat) approximately distance_m metres
+        along the route geometry.
 
-        Shapely's native geometry.length is in degrees when
-        using longitude/latitude, so we walk the individual
-        coordinate segments using haversine distance.
+        Geometry is expected to be:
+
+            [(lon, lat), ...]
+
+        Haversine distance is used because coordinates are WGS84.
         """
 
-        if not isinstance(
-                geometry,
-                LineString,
-        ):
-            return None
-
-        coordinates = list(
-            geometry.coords
+        coordinates = self._normalise_geometry(
+            geometry
         )
 
         if not coordinates:
             return None
 
         if len(coordinates) == 1:
-            lon, lat = coordinates[0]
-
-            return Point(
-                lon,
-                lat,
-            )
+            return coordinates[0]
 
         remaining = max(
             0.0,
-            distance_m,
+            float(distance_m),
         )
 
         for start, end in zip(
-                coordinates[:-1],
-                coordinates[1:],
+            coordinates[:-1],
+            coordinates[1:],
         ):
 
             lon1, lat1 = start
@@ -410,63 +582,129 @@ class VehicleSimulationService:
             if remaining <= segment_distance:
 
                 ratio = (
-                        remaining
-                        / segment_distance
+                    remaining
+                    / segment_distance
                 )
 
                 lon = (
-                        lon1
-                        + (
-                                lon2 - lon1
-                        )
-                        * ratio
+                    lon1
+                    + (
+                        lon2 - lon1
+                    )
+                    * ratio
                 )
 
                 lat = (
-                        lat1
-                        + (
-                                lat2 - lat1
-                        )
-                        * ratio
+                    lat1
+                    + (
+                        lat2 - lat1
+                    )
+                    * ratio
                 )
 
-                return Point(
+                return (
                     lon,
                     lat,
                 )
 
             remaining -= segment_distance
 
-        # If progress is past the end, return
-        # the final coordinate.
-        lon, lat = coordinates[-1]
+        # --------------------------------------------------------
+        # Progress has passed the geometry.
+        # Return final coordinate.
+        # --------------------------------------------------------
 
-        return Point(
-            lon,
-            lat,
-        )
+        return coordinates[-1]
 
-    # ------------------------------------------------------------------
-    # Segment lookup
-    # ------------------------------------------------------------------
+    # ============================================================
+    # NORMALISE GEOMETRY
+    # ============================================================
+
+    @staticmethod
+    def _normalise_geometry(
+        geometry: Any,
+    ) -> list[tuple[float, float]]:
+        """
+        Convert route geometry into:
+
+            [(lon, lat), ...]
+
+        Your current RouteSegment geometry is expected to already
+        be a list of coordinate pairs.
+
+        This method also tolerates tuples and other sequence-like
+        coordinate containers.
+        """
+
+        if geometry is None:
+            return []
+
+        try:
+            coordinates = list(geometry)
+        except TypeError:
+            return []
+
+        result = []
+
+        for coordinate in coordinates:
+
+            if not isinstance(
+                coordinate,
+                (list, tuple),
+            ):
+                continue
+
+            if len(coordinate) < 2:
+                continue
+
+            try:
+
+                lon = float(
+                    coordinate[0]
+                )
+
+                lat = float(
+                    coordinate[1]
+                )
+
+            except (
+                TypeError,
+                ValueError,
+            ):
+                continue
+
+            result.append(
+                (
+                    lon,
+                    lat,
+                )
+            )
+
+        return result
+
+    # ============================================================
+    # SEGMENT LOOKUP
+    # ============================================================
 
     def _find_segment_at_progress(
-            self,
-            segments: list[Any],
-            progress_m: float,
+        self,
+        segments: list[Any],
+        progress_m: float,
     ) -> tuple[Any | None, float]:
         """
-        Find the segment containing a particular
-        distance along the route.
+        Find the route segment containing total route progress.
 
         Returns:
 
-            (segment, distance_inside_segment)
+            (
+                segment,
+                distance_inside_segment
+            )
         """
 
         remaining = max(
             0.0,
-            progress_m,
+            float(progress_m),
         )
 
         for segment in segments:
@@ -476,6 +714,7 @@ class VehicleSimulationService:
             )
 
             if length is None:
+
                 geometry = getattr(
                     segment,
                     "geometry",
@@ -483,8 +722,10 @@ class VehicleSimulationService:
                 )
 
                 if geometry is not None:
-                    length = self._geometry_length_m(
-                        geometry
+                    length = (
+                        self._geometry_length_m(
+                            geometry
+                        )
                     )
 
             if length is None:
@@ -499,17 +740,20 @@ class VehicleSimulationService:
 
             remaining -= length
 
+        # --------------------------------------------------------
+        # Progress is beyond route end.
+        # --------------------------------------------------------
+
         if segments:
 
             last = segments[-1]
 
-            length = (
-                self._segment_distance(
-                    last
-                )
+            length = self._segment_distance(
+                last
             )
 
             if length is None:
+
                 geometry = getattr(
                     last,
                     "geometry",
@@ -533,13 +777,13 @@ class VehicleSimulationService:
             0.0,
         )
 
-    # ------------------------------------------------------------------
-    # Route length
-    # ------------------------------------------------------------------
+    # ============================================================
+    # ROUTE LENGTH
+    # ============================================================
 
     def _route_length(
-            self,
-            segments: list[Any],
+        self,
+        segments: list[Any],
     ) -> float:
 
         total = 0.0
@@ -559,6 +803,7 @@ class VehicleSimulationService:
                 )
 
                 if geometry is not None:
+
                     distance = (
                         self._geometry_length_m(
                             geometry
@@ -570,16 +815,31 @@ class VehicleSimulationService:
 
         return total
 
+    # ============================================================
+    # SEGMENT DISTANCE
+    # ============================================================
+
+    @staticmethod
     def _segment_distance(
-            self,
-            segment: Any,
+        segment: Any,
     ) -> float | None:
+        """
+        Support the distance field names currently used
+        throughout the routing code.
+        """
 
         value = getattr(
             segment,
-            "distance_m",
+            "distance",
             None,
         )
+
+        if value is None:
+            value = getattr(
+                segment,
+                "distance_m",
+                None,
+            )
 
         if value is None:
             value = getattr(
@@ -592,31 +852,42 @@ class VehicleSimulationService:
             return None
 
         try:
+
             return max(
                 0.0,
                 float(value),
             )
+
         except (
-                TypeError,
-                ValueError,
+            TypeError,
+            ValueError,
         ):
+
             return None
 
+    # ============================================================
+    # SEGMENT TRAVEL TIME
+    # ============================================================
+
+    @staticmethod
     def _segment_travel_time(
-            self,
-            segment: Any,
+        segment: Any,
     ) -> float | None:
+        """
+        Support the travel-time field names currently used
+        throughout the routing code.
+        """
 
         value = getattr(
             segment,
-            "travel_time_s",
+            "travel_time",
             None,
         )
 
         if value is None:
             value = getattr(
                 segment,
-                "travel_time",
+                "travel_time_s",
                 None,
             )
 
@@ -624,30 +895,43 @@ class VehicleSimulationService:
             return None
 
         try:
+
             return max(
                 0.0,
                 float(value),
             )
+
         except (
-                TypeError,
-                ValueError,
+            TypeError,
+            ValueError,
         ):
+
             return None
 
-    def _geometry_length_m(
-            self,
-            geometry: LineString,
-    ) -> float:
+    # ============================================================
+    # GEOMETRY LENGTH
+    # ============================================================
 
-        coordinates = list(
+    def _geometry_length_m(
+        self,
+        geometry: Any,
+    ) -> float:
+        """
+        Calculate WGS84 route geometry length in metres.
+        """
+
+        coordinates = self._normalise_geometry(
             geometry
         )
+
+        if len(coordinates) < 2:
+            return 0.0
 
         total = 0.0
 
         for start, end in zip(
-                coordinates[:-1],
-                coordinates[1:],
+            coordinates[:-1],
+            coordinates[1:],
         ):
 
             lon1, lat1 = start
@@ -664,22 +948,297 @@ class VehicleSimulationService:
 
         return total
 
-    # ------------------------------------------------------------------
-    # Haversine
-    # ------------------------------------------------------------------
+    # ============================================================
+    # STOP TRACKING
+    # ============================================================
+
+    def _update_completed_stops(
+        self,
+        vehicle: Any,
+        route: Any,
+        progress_m: float,
+    ) -> None:
+        """
+        Mark stops as completed based on cumulative route distance.
+
+        Your current routing architecture creates one route segment
+        between each pair of consecutive stops:
+
+            stop 0 -> segment 0 -> stop 1
+            stop 1 -> segment 1 -> stop 2
+            stop 2 -> segment 2 -> stop 3
+        """
+
+        stops = getattr(
+            route,
+            "stops",
+            [],
+        )
+
+        segments = getattr(
+            route,
+            "segments",
+            [],
+        )
+
+        if not stops:
+            return
+
+        completed_sequence = self._safe_int(
+            getattr(
+                vehicle,
+                "completed_stop_sequence",
+                -1,
+            ),
+            default=-1,
+        )
+
+        cumulative_distance = 0.0
+
+        for index, stop in enumerate(stops):
+
+            # First stop is the vehicle's starting position.
+            if index == 0:
+                continue
+
+            segment_index = index - 1
+
+            if segment_index >= len(segments):
+                break
+
+            segment = segments[
+                segment_index
+            ]
+
+            length = self._segment_distance(
+                segment
+            )
+
+            if length is None:
+
+                geometry = getattr(
+                    segment,
+                    "geometry",
+                    None,
+                )
+
+                if geometry is not None:
+
+                    length = (
+                        self._geometry_length_m(
+                            geometry
+                        )
+                    )
+
+            if length is None:
+                continue
+
+            cumulative_distance += length
+
+            sequence = self._safe_int(
+                getattr(
+                    stop,
+                    "sequence",
+                    index,
+                ),
+                default=index,
+            )
+
+            if (
+                progress_m >= cumulative_distance
+                and sequence > completed_sequence
+            ):
+
+                completed_sequence = sequence
+
+                vehicle_id = getattr(
+                    vehicle,
+                    "vehicle_id",
+                    "UNKNOWN",
+                )
+
+                kind = getattr(
+                    stop.location,
+                    "kind",
+                    "unknown",
+                ) if getattr(
+                    stop,
+                    "location",
+                    None,
+                ) is not None else "unknown"
+
+                print(
+                    f"[SIM] {vehicle_id}: "
+                    f"reached stop {sequence} "
+                    f"({kind})"
+                )
+
+        self._set_attribute(
+            vehicle,
+            "completed_stop_sequence",
+            completed_sequence,
+        )
+
+    # ============================================================
+    # ROUTE COMPLETION
+    # ============================================================
+
+    def _mark_route_complete(
+        self,
+        vehicle: Any,
+        route: Any,
+    ) -> None:
+        """
+        Mark vehicle as available after completing its route.
+
+        The completed route remains in world.routes so that the
+        frontend can still display route history.
+
+        current_route_id is cleared because it represents the
+        vehicle's ACTIVE route.
+        """
+
+        stops = getattr(
+            route,
+            "stops",
+            [],
+        )
+
+        if stops:
+
+            final_sequence = max(
+                (
+                    self._safe_int(
+                        getattr(
+                            stop,
+                            "sequence",
+                            -1,
+                        ),
+                        default=-1,
+                    )
+                    for stop in stops
+                ),
+                default=-1,
+            )
+
+            self._set_attribute(
+                vehicle,
+                "completed_stop_sequence",
+                final_sequence,
+            )
+
+        # Preserve the completed route separately if the vehicle
+        # model supports this field.
+        current_route_id = getattr(
+            vehicle,
+            "current_route_id",
+            None,
+        )
+
+        if current_route_id is not None:
+
+            self._set_attribute(
+                vehicle,
+                "last_completed_route_id",
+                current_route_id,
+            )
+
+        self._set_attribute(
+            vehicle,
+            "route_progress_m",
+            0.0,
+        )
+
+        self._set_attribute(
+            vehicle,
+            "status",
+            "AVAILABLE",
+        )
+
+        self._set_attribute(
+            vehicle,
+            "current_route_id",
+            None,
+        )
+
+        self._set_attribute(
+            vehicle,
+            "current_route",
+            None,
+        )
+
+    # ============================================================
+    # ROUTE COLLECTION
+    # ============================================================
+
+    @staticmethod
+    def _get_routes(
+        world: Any,
+    ) -> Any:
+
+        return getattr(
+            world,
+            "routes",
+            [],
+        )
+
+    @staticmethod
+    def _get_route(
+        routes: Any,
+        route_id: str,
+    ) -> Any:
+
+        # --------------------------------------------------------
+        # Dictionary-based WorldState.routes
+        # --------------------------------------------------------
+
+        if isinstance(
+            routes,
+            dict,
+        ):
+
+            return routes.get(
+                route_id
+            )
+
+        # --------------------------------------------------------
+        # List-based WorldState.routes
+        # --------------------------------------------------------
+
+        if isinstance(
+            routes,
+            (list, tuple),
+        ):
+
+            for route in routes:
+
+                if getattr(
+                    route,
+                    "route_id",
+                    None,
+                ) == route_id:
+
+                    return route
+
+        return None
+
+    # ============================================================
+    # HAVERSINE
+    # ============================================================
 
     @classmethod
     def _haversine_distance(
-            cls,
-            lat1: float,
-            lon1: float,
-            lat2: float,
-            lon2: float,
+        cls,
+        lat1: float,
+        lon1: float,
+        lat2: float,
+        lon2: float,
     ) -> float:
 
         lat1_rad = math.radians(
             lat1
         )
+
         lat2_rad = math.radians(
             lat2
         )
@@ -693,123 +1252,98 @@ class VehicleSimulationService:
         )
 
         a = (
-                math.sin(d_lat / 2) ** 2
-                + math.cos(lat1_rad)
-                * math.cos(lat2_rad)
-                * math.sin(d_lon / 2) ** 2
+            math.sin(
+                d_lat / 2
+            ) ** 2
+            +
+            math.cos(lat1_rad)
+            * math.cos(lat2_rad)
+            * math.sin(
+                d_lon / 2
+            ) ** 2
+        )
+
+        # Protect against floating-point drift.
+        a = min(
+            1.0,
+            max(
+                0.0,
+                a,
+            ),
         )
 
         c = (
-                2
-                * math.atan2(
-            math.sqrt(a),
-            math.sqrt(1 - a),
-        )
+            2
+            * math.atan2(
+                math.sqrt(a),
+                math.sqrt(1.0 - a),
+            )
         )
 
         return (
-                cls.EARTH_RADIUS_M
-                * c
+            cls.EARTH_RADIUS_M
+            * c
         )
 
-    # ------------------------------------------------------------------
-    # Completion
-    # ------------------------------------------------------------------
-
-    def _mark_route_complete(
-            self,
-            vehicle: Any,
-    ) -> None:
-
-        self._set_attribute(
-            vehicle,
-            "status",
-            "COMPLETED",
-        )
-
-        self._set_attribute(
-            vehicle,
-            "route_progress_m",
-            0.0,
-        )
-
-        # Keep route_id for now so the frontend can
-        # still identify the completed route.
-        #
-        # If your application expects completed vehicles
-        # to become immediately available for another route,
-        # change this to:
-        #
-        # vehicle.route_id = None
-
-    # ------------------------------------------------------------------
-    # Route collection helpers
-    # ------------------------------------------------------------------
+    # ============================================================
+    # SAFE CONVERSION HELPERS
+    # ============================================================
 
     @staticmethod
-    def _get_routes(
-            world: Any,
-    ) -> Any:
+    def _safe_float(
+        value: Any,
+        default: float = 0.0,
+    ) -> float:
 
-        return getattr(
-            world,
-            "routes",
-            {},
-        )
+        try:
+            return float(value)
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+
+            return default
 
     @staticmethod
-    def _get_route(
-            routes: Any,
-            route_id: str,
-    ) -> Any:
+    def _safe_int(
+        value: Any,
+        default: int = 0,
+    ) -> int:
 
-        if isinstance(
-                routes,
-                dict,
-        ):
-            return routes.get(
-                route_id
-            )
+        try:
+            return int(value)
 
-        # Support list-based WorldState.routes.
-        if isinstance(
-                routes,
-                (list, tuple),
+        except (
+            TypeError,
+            ValueError,
         ):
 
-            for route in routes:
+            return default
 
-                if getattr(
-                        route,
-                        "route_id",
-                        None,
-                ) == route_id:
-                    return route
-
-        return None
-
-    # ------------------------------------------------------------------
-    # Safe attribute assignment
-    # ------------------------------------------------------------------
+    # ============================================================
+    # SAFE ATTRIBUTE SETTER
+    # ============================================================
 
     @staticmethod
     def _set_attribute(
-            obj: Any,
-            name: str,
-            value: Any,
+        obj: Any,
+        name: str,
+        value: Any,
     ) -> None:
 
         try:
+
             setattr(
                 obj,
                 name,
                 value,
             )
+
         except (
-                AttributeError,
-                TypeError,
+            AttributeError,
+            TypeError,
         ):
-            # This keeps the simulator from crashing if
-            # a particular vehicle model does not expose
-            # one of the optional fields.
+
             pass
+

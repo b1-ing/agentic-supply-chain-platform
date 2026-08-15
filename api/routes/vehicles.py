@@ -26,7 +26,7 @@ def serialize_vehicle(vehicle) -> VehicleResponse:
         length_m=vehicle.length_m,
         refrigerated=vehicle.refrigerated,
         hazardous_certified=vehicle.hazardous_certified,
-        current_route_id=None,
+        current_route_id=vehicle.current_route_id,
     )
 
 

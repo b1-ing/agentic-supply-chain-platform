@@ -766,7 +766,6 @@ async def delete_order(
 # ============================================================
 # MODIFY ACTIVE ORDER
 # ============================================================
-
 async def modify_active_order(
     order_id: str,
     updates: dict,
@@ -774,18 +773,23 @@ async def modify_active_order(
     """
     Modify an order that is currently in progress.
 
-    Active orders cannot be modified without invalidating their
-    current routing plan.
+    If the modification affects routing, the active route is
+    immediately rebuilt from the vehicle's current position
+    through the order's updated remaining stops.
 
-    The order remains active after modification, but its current
-    route should be replanned before execution continues.
+    Important:
+        - The order itself is updated first.
+        - Pickup/delivery RouteStops are updated to reflect the
+          new order locations.
+        - Routing constraints are extracted from the updated order.
+        - The existing VehicleRoute object is then rerouted.
     """
 
     world = world_manager.get_world()
 
-    # ---------------------------------------------------------
-    # Find active order
-    # ---------------------------------------------------------
+    # ============================================================
+    # FIND ACTIVE ORDER
+    # ============================================================
 
     order = next(
         (
@@ -800,9 +804,7 @@ async def modify_active_order(
         return {
             "success": False,
             "order_id": order_id,
-            "error": (
-                f"Active order '{order_id}' not found."
-            ),
+            "error": f"Active order '{order_id}' not found.",
         }
 
     if not updates:
@@ -812,9 +814,9 @@ async def modify_active_order(
             "error": "No updates were provided.",
         }
 
-    # ---------------------------------------------------------
-    # Fields that cannot be modified directly
-    # ---------------------------------------------------------
+    # ============================================================
+    # PROTECTED FIELDS
+    # ============================================================
 
     protected_fields = {
         "order_id",
@@ -841,9 +843,9 @@ async def modify_active_order(
             ),
         }
 
-    # ---------------------------------------------------------
-    # Validate fields
-    # ---------------------------------------------------------
+    # ============================================================
+    # VALIDATE FIELDS
+    # ============================================================
 
     valid_fields = set(
         IncomingOrder.model_fields.keys()
@@ -865,35 +867,18 @@ async def modify_active_order(
             ),
         }
 
-    # ---------------------------------------------------------
-    # Save previous values
-    # ---------------------------------------------------------
+    # ============================================================
+    # SAVE PREVIOUS VALUES
+    # ============================================================
 
     previous_values = {
         field: getattr(order, field)
         for field in updates
     }
 
-    # ---------------------------------------------------------
-    # Apply updates
-    # ---------------------------------------------------------
-
-    try:
-        for field, value in updates.items():
-            setattr(order, field, value)
-
-    except Exception as exc:
-        return {
-            "success": False,
-            "order_id": order_id,
-            "error": (
-                f"Failed to modify active order: {exc}"
-            ),
-        }
-
-    # ---------------------------------------------------------
-    # Determine whether routing is invalidated
-    # ---------------------------------------------------------
+    # ============================================================
+    # DETERMINE WHETHER ROUTING IS INVALIDATED
+    # ============================================================
 
     routing_fields = {
         "pickup_address",
@@ -914,47 +899,414 @@ async def modify_active_order(
     }
 
     routing_invalidated = bool(
-        routing_fields.intersection(updates.keys())
+        routing_fields.intersection(
+            updates.keys()
+        )
     )
 
-    # Address changes invalidate resolved locations
-    if "pickup_address" in updates:
-        order.pickup_lat = None
-        order.pickup_lon = None
-        order.pickup_node = None
-        routing_invalidated = True
+    # ============================================================
+    # APPLY ORDER UPDATES
+    # ============================================================
 
-    if "delivery_address" in updates:
-        order.delivery_lat = None
-        order.delivery_lon = None
-        order.delivery_node = None
-        routing_invalidated = True
+    try:
+        for field, value in updates.items():
+            setattr(
+                order,
+                field,
+                value,
+            )
 
-    # ---------------------------------------------------------
-    # Mark world as requiring replanning
-    # ---------------------------------------------------------
+    except Exception as exc:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                f"Failed to modify active order: {exc}"
+            ),
+        }
+
+    # ============================================================
+    # FIND VEHICLE / ROUTE
+    #
+    # Do this before potentially changing routing state so that
+    # we know exactly which operational route must be updated.
+    # ============================================================
+
+    vehicle = None
+    route = None
 
     if routing_invalidated:
+
+        vehicle = next(
+            (
+                vehicle
+                for vehicle in world.vehicles
+                if vehicle.vehicle_id
+                == order.assigned_vehicle
+            ),
+            None,
+        )
+
+        if vehicle is None:
+            return {
+                "success": False,
+                "order_id": order_id,
+                "error": (
+                    f"Assigned vehicle "
+                    f"'{order.assigned_vehicle}' "
+                    "could not be found."
+                ),
+            }
+
+        # --------------------------------------------------------
+        # Find active route
+        # --------------------------------------------------------
+
+        current_route_id = getattr(
+            vehicle,
+            "current_route_id",
+            None,
+        )
+
+        if current_route_id is not None:
+
+            route = next(
+                (
+                    route
+                    for route in world.routes
+                    if route.route_id
+                    == current_route_id
+                ),
+                None,
+            )
+
+        # Fallback
+        if route is None:
+
+            route = getattr(
+                vehicle,
+                "current_route",
+                None,
+            )
+
+        if route is None:
+            return {
+                "success": False,
+                "order_id": order_id,
+                "error": (
+                    f"Vehicle '{vehicle.vehicle_id}' "
+                    "does not have an active route."
+                ),
+            }
+
+    # ============================================================
+    # RESOLVE NEW ADDRESSES
+    # ============================================================
+
+    if (
+        "pickup_address" in updates
+        or "delivery_address" in updates
+    ):
+
+        from agents.tools.geocoding_tools import (
+            geocode_location,
+        )
+
+        import osmnx as ox
+
+        # --------------------------------------------------------
+        # NEW PICKUP
+        # --------------------------------------------------------
+
+        if "pickup_address" in updates:
+
+            result = geocode_location(
+                order.pickup_address
+            )
+
+            if not result["success"]:
+                return {
+                    "success": False,
+                    "order_id": order_id,
+                    "error": (
+                        "Failed to geocode new pickup "
+                        f"location: "
+                        f"{result.get('error')}"
+                    ),
+                }
+
+            order.pickup_lat = result["latitude"]
+            order.pickup_lon = result["longitude"]
+
+            order.pickup_node = (
+                ox.distance.nearest_nodes(
+                    world.graph,
+                    order.pickup_lon,
+                    order.pickup_lat,
+                )
+            )
+
+        # --------------------------------------------------------
+        # NEW DELIVERY
+        # --------------------------------------------------------
+
+        if "delivery_address" in updates:
+
+            result = geocode_location(
+                order.delivery_address
+            )
+
+            if not result["success"]:
+                return {
+                    "success": False,
+                    "order_id": order_id,
+                    "error": (
+                        "Failed to geocode new delivery "
+                        f"location: "
+                        f"{result.get('error')}"
+                    ),
+                }
+
+            order.delivery_lat = result["latitude"]
+            order.delivery_lon = result["longitude"]
+
+            order.delivery_node = (
+                ox.distance.nearest_nodes(
+                    world.graph,
+                    order.delivery_lon,
+                    order.delivery_lat,
+                )
+            )
+
+    # ============================================================
+    # UPDATE ROUTE STOPS
+    #
+    # THIS IS THE IMPORTANT PART.
+    #
+    # The old RouteStop still points at the old pickup/delivery
+    # RoutingLocation. Replace it with the location from the
+    # updated order.
+    # ============================================================
+
+    if routing_invalidated and route is not None:
+
+        from models.order.routing_location import (
+            RoutingLocation,
+        )
+
+        for stop in route.stops:
+
+            location = getattr(
+                stop,
+                "location",
+                None,
+            )
+
+            if location is None:
+                continue
+
+            stop_order_id = getattr(
+                location,
+                "order_id",
+                None,
+            )
+
+            stop_kind = getattr(
+                location,
+                "kind",
+                None,
+            )
+
+            # Only modify stops belonging to this order
+            if stop_order_id != order.order_id:
+                continue
+
+            # ----------------------------------------------------
+            # UPDATE PICKUP STOP
+            # ----------------------------------------------------
+
+            if (
+                stop_kind == "pickup"
+                and (
+                    "pickup_address" in updates
+                    or "constraints" in updates
+                )
+            ):
+
+                stop.location = RoutingLocation(
+                    matrix_index=0,
+                    graph_node=order.pickup_node,
+                    lat=order.pickup_lat,
+                    lon=order.pickup_lon,
+                    kind="pickup",
+                    order_id=order.order_id,
+                )
+
+            # ----------------------------------------------------
+            # UPDATE DELIVERY STOP
+            # ----------------------------------------------------
+
+            elif (
+                stop_kind == "delivery"
+                and (
+                    "delivery_address" in updates
+                    or "constraints" in updates
+                )
+            ):
+
+                stop.location = RoutingLocation(
+                    matrix_index=0,
+                    graph_node=order.delivery_node,
+                    lat=order.delivery_lat,
+                    lon=order.delivery_lon,
+                    kind="delivery",
+                    order_id=order.order_id,
+                )
+
+    # ============================================================
+    # EXTRACT UPDATED ROUTING CONSTRAINTS
+    # ============================================================
+
+    avoid_roads = []
+    avoid_areas = []
+    required_waypoints = []
+
+    for constraint in order.constraints or []:
+
+        # --------------------------------------------------------
+        # Support both:
+        #
+        #   OrderConstraint(...)
+        #
+        # and:
+        #
+        #   {"type": "...", "value": "..."}
+        # --------------------------------------------------------
+
+        if isinstance(constraint, dict):
+
+            constraint_type = constraint.get(
+                "type"
+            )
+
+            value = constraint.get(
+                "value"
+            )
+
+        else:
+
+            constraint_type = getattr(
+                constraint,
+                "type",
+                None,
+            )
+
+            value = getattr(
+                constraint,
+                "value",
+                None,
+            )
+
+        # --------------------------------------------------------
+        # Convert Enum -> string
+        # --------------------------------------------------------
+
+        if hasattr(
+            constraint_type,
+            "value",
+        ):
+            constraint_type = (
+                constraint_type.value
+            )
+
+        # --------------------------------------------------------
+        # Extract routing constraints
+        # --------------------------------------------------------
+
+        if constraint_type == "avoid_road":
+
+            avoid_roads.append(
+                str(value)
+            )
+
+        elif constraint_type == "avoid_area":
+
+            avoid_areas.append(
+                str(value)
+            )
+
+        elif constraint_type == "required_waypoint":
+
+            required_waypoints.append(
+                str(value)
+            )
+
+    # ============================================================
+    # REROUTE
+    # ============================================================
+
+    reroute_result = None
+
+    if routing_invalidated:
+
         world.recommend_replan = True
 
-        reroute_result = await simple_fleet_route(
-                order_id
+        from services.traffic.disruption_service import (
+            DisruptionService,
+        )
+
+        disruption_service = (
+            DisruptionService()
+        )
+
+        reroute_result = (
+            await disruption_service.reroute_route(
+                world=world,
+                route=route,
+                vehicle=vehicle,
+                avoid_roads=avoid_roads,
+                avoid_areas=avoid_areas,
             )
+        )
+
+        if not reroute_result["success"]:
+            return {
+                "success": False,
+                "order_id": order_id,
+                "updated_fields": list(
+                    updates.keys()
+                ),
+                "previous_values": previous_values,
+                "routing_invalidated": True,
+                "recommend_replan": True,
+                "status": "IN_PROGRESS",
+                "error": (
+                    "Order was modified, but the "
+                    "new route could not be constructed."
+                ),
+                "reroute": reroute_result,
+            }
+
+    # ============================================================
+    # RETURN
+    # ============================================================
 
     return {
         "success": True,
         "order_id": order_id,
-        "updated_fields": list(updates.keys()),
+        "updated_fields": list(
+            updates.keys()
+        ),
         "previous_values": previous_values,
         "routing_invalidated": routing_invalidated,
         "recommend_replan": routing_invalidated,
         "status": "IN_PROGRESS",
         "message": (
-            f"Active order '{order_id}' modified successfully."
+            f"Active order '{order_id}' "
+            "modified successfully."
         ),
         "reroute": reroute_result,
     }
-
 
 # ============================================================
 # CANCEL ACTIVE ORDER
@@ -1065,6 +1417,8 @@ async def cancel_active_order(
     # ---------------------------------------------------------
 
     world.recommend_replan = True
+
+
 
     return {
         "success": True,

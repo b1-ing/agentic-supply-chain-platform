@@ -48,6 +48,7 @@ def serialize_route(route) -> RouteResponse:
     return RouteResponse(
         vehicle_id=route.vehicle_id,
         stops=stops,
+        route_id=route.route_id,
         segments=segments,
         total_distance_m=route.total_distance,
         total_travel_time_seconds=route.total_travel_time,

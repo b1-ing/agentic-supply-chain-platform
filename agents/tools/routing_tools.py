@@ -688,6 +688,9 @@ class SimpleRoutingTool:
             "status_message": route.get(
                 "status_message"
             ),
+            "route_id": route.get(
+                "route_id"
+            ),
             "route_geometry": route.get(
                 "route_geometry"
             ),
@@ -1315,6 +1318,21 @@ async def simple_fleet_route(order_id: str):
     vehicle.current_route = vehicle_route
     vehicle.status = VehicleStatus.EN_ROUTE
 
+    print(
+        "[ROUTE COMMIT]",
+        {
+            "vehicle_id": vehicle.vehicle_id,
+            "route_id": route_id,
+            "vehicle_current_route_id": vehicle.current_route_id,
+            "vehicle_current_route": (
+                vehicle.current_route.route_id
+                if vehicle.current_route
+                else None
+            ),
+            "status": vehicle.status,
+        },
+    )
+
     world.routes.append(vehicle_route)
 
     if order in world.new_orders:
@@ -1322,6 +1340,13 @@ async def simple_fleet_route(order_id: str):
 
     if order not in world.orders_in_progress:
         world.orders_in_progress.append(order)
+
+    print(
+        "[ROUTING WORLD]",
+        id(world),
+        id(vehicle),
+    )
+
 
     # ---------------------------------------------------------
     # Return

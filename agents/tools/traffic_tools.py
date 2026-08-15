@@ -302,7 +302,7 @@ async def reroute_affected_routes(
 
     service = DisruptionService()
 
-    result = service.reroute_affected_routes(
+    result = await service.reroute_affected_routes(
         world=world,
         incident=incident,
     )
