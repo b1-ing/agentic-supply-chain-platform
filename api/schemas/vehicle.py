@@ -10,8 +10,6 @@ class VehicleResponse(BaseModel):
     current_lon: float | None = None
 
     max_weight_kg: float
-    max_volume_m3: float
-    max_pallets: int
 
     height_m: float
     width_m: float

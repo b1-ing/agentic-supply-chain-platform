@@ -7,9 +7,10 @@ from models.depot import Depot
 
 from models.vehicles.standard_truck import StandardTruck
 from models.vehicles.refrigerated_truck import RefrigeratedTruck
-from models.vehicles.tall_truck import TallTruck
+from models.vehicles.tall_truck import   TallTruck
 
 from services.world.world_manager import world_manager
+from models.depot import Depot
 
 
 GRAPH_PATH = "cache/singapore.graphml"
@@ -45,8 +46,8 @@ def initialise_world() -> WorldState:
     # Depot(s)
     ############################################################
 
-    depot_lat = 1.300557
-    depot_lon = 103.799389
+    depot_lat = 1.36028
+    depot_lon = 103.90944
 
     depot_node = ox.distance.nearest_nodes(
         graph,
@@ -56,7 +57,7 @@ def initialise_world() -> WorldState:
 
     depots = [
         Depot(
-            depot_id="HQ",
+            depot_id="Paya Lebar Air Base",
             graph_node=depot_node,
             lat=depot_lat,
             lon=depot_lon,
@@ -70,19 +71,31 @@ def initialise_world() -> WorldState:
     vehicles = [
         StandardTruck(
             vehicle_id="TRUCK-001",
+            depot_id="Paya Lebar Air Base",
             current_node=depot_node,
+            current_lat=depot_lat,
+            current_lon=depot_lon
         ),
         StandardTruck(
             vehicle_id="TRUCK-002",
+            depot_id="Paya Lebar Air Base",
             current_node=depot_node,
+            current_lat=depot_lat,
+            current_lon=depot_lon
         ),
         RefrigeratedTruck(
             vehicle_id="COLD-001",
+            depot_id="Paya Lebar Air Base",
             current_node=depot_node,
+            current_lat=depot_lat,
+            current_lon=depot_lon
         ),
         TallTruck(
             vehicle_id="TALL-001",
+            depot_id="Paya Lebar Air Base",
             current_node=depot_node,
+            current_lat=depot_lat,
+            current_lon=depot_lon
         ),
     ]
 
@@ -93,6 +106,7 @@ def initialise_world() -> WorldState:
     world_manager.initialise(
         graph=graph,
         vehicles=vehicles,
+        depots=depots,
         mapping={},
     )
 
@@ -105,5 +119,6 @@ def initialise_world() -> WorldState:
     )
 
     print(f"[Initialise] {len(world.vehicles)} vehicles loaded.")
+    print(f"[Initialise] {len(world.depots)} depots loaded.")
 
     return world

@@ -6,6 +6,8 @@ from agents.tool_registry import TOOLS
 from agents.tool_schemas import TOOLS_SCHEMA
 from agents.tool_executor import execute_tool
 import json
+import time
+import uuid
 
 SYSTEM_PROMPT = """
 You are the operations agent for an agentic supply-chain system.
@@ -155,12 +157,18 @@ When the user explicitly asks to deliver or transport cargo,
 do not merely provide directions.
 """
 
+async def emit_event(emit, event):
+    if emit is not None:
+        await emit(event)
+
+
+
 class OperationsAgent:
 
     def __init__(self):
         self.client = AsyncOpenAI()
 
-    async def run(self, user_message: str):
+    async def run(self, user_message: str, emit=None):
 
         messages = [
             {
@@ -199,14 +207,65 @@ class OperationsAgent:
                     tool_call.function.arguments
                 )
 
+                trace_id = str(uuid.uuid4())
+                started = time.perf_counter()
+
                 print(f"[AGENT] Calling {name}({arguments})")
 
-                result = await execute_tool(
-                    name,
-                    arguments,
+                await emit_event(
+                    emit,
+                    {
+                        "type": "tool_start",
+                        "id": trace_id,
+                        "toolName": name,
+                        "args": arguments,
+                    },
                 )
 
-                print(f"[AGENT] Result: {result}")
+                try:
+
+                    result = await execute_tool(
+                        name,
+                        arguments,
+                    )
+
+                    duration_ms = (
+                        time.perf_counter() - started
+                    ) * 1000
+
+                    print(f"[AGENT] Result: {result}")
+
+                    await emit_event(
+                        emit,
+                        {
+                            "type": "tool_end",
+                            "id": trace_id,
+                            "toolName": name,
+                            "status": "completed",
+                            "durationMs": round(duration_ms, 2),
+                            "result": result,
+                        },
+                    )
+
+                except Exception as exc:
+
+                    duration_ms = (
+                        time.perf_counter() - started
+                    ) * 1000
+
+                    await emit_event(
+                        emit,
+                        {
+                            "type": "tool_end",
+                            "id": trace_id,
+                            "toolName": name,
+                            "status": "failed",
+                            "durationMs": round(duration_ms, 2),
+                            "error": str(exc),
+                        },
+                    )
+
+                    raise
 
                 messages.append(
                     {

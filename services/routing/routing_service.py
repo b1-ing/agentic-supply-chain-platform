@@ -28,25 +28,36 @@ class RoutingService:
         self.route_builder = RouteBuilder()
         self.compatibility_service = CompatibilityService()
 
-    def plan_routes(
+    async def plan_routes(
         self,
         world,
     ) -> RoutePlan:
 
         for order in list(world.new_orders):
 
-            compatibility = self.compatibility_service.evaluate(
+            compatibility = await self.compatibility_service.evaluate(
                 order.order_id
             )
 
-            world.compatibility_results[order.order_id] = compatibility
+            if compatibility["status"] == "UNSERVICEABLE":
+                    return {
+                        "success": False,
+                        "order_id": order.order_id,
+                        "status": "UNSERVICEABLE",
+                        "error": "No compatible vehicle available.",
+                    }
 
-            if compatibility.status == CompatibilityStatus.UNSERVICEABLE:
-                world.new_orders.remove(order)
-                world.unserviceable_orders.append(order)
-                return
-            elif compatibility.status == CompatibilityStatus.WAITING:
-                return
+            vehicle_id = compatibility.get("recommended_vehicle_id")
+
+            if not vehicle_id:
+                return {
+                    "success": False,
+                    "order_id": order.order_id,
+                    "status": "UNSERVICEABLE",
+                    "error": "Compatibility evaluation did not select a vehicle.",
+                }
+            world.new_orders.remove(order)
+            world.unserviceable_orders.append(order)
 
         problem = self.problem_builder.build(
             world,

@@ -47,8 +47,6 @@ def serialize_order(order) -> IncomingOrder:
         delivery_node=order.delivery_node,
         height_m=order.height_m,
         weight_kg=order.weight_kg,
-        volume_m3=order.volume_m3,
-        pallets=order.pallets,
         refrigerated=order.refrigerated,
         hazardous=order.hazardous,
         fragile=order.fragile,

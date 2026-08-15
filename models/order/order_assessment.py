@@ -37,8 +37,7 @@ class OrderAssessment(BaseModel):
     delivery_address: str | None = None
 
     weight_kg: float | None = None
-    volume_m3: float | None = None
-    pallets: int | None = None
+
 
     height_m: float | None = None
     width_m: float | None = None

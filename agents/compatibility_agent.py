@@ -51,8 +51,6 @@ VEHICLE:
 - current route
 - remaining capacity
 - maximum weight
-- maximum volume
-- pallet capacity
 - refrigeration capability
 - hazardous certification
 - dimensions
@@ -160,8 +158,6 @@ class CompatibilityAgent:
             "delivery_address": order.delivery_address,
 
             "weight_kg": order.weight_kg,
-            "volume_m3": order.volume_m3,
-            "pallets": order.pallets,
 
             "refrigerated": order.refrigerated,
             "hazardous": order.hazardous,
@@ -195,8 +191,6 @@ class CompatibilityAgent:
                     "current_route_id": vehicle.current_route_id,
 
                     "max_weight_kg": vehicle.max_weight_kg,
-                    "max_volume_m3": vehicle.max_volume_m3,
-                    "max_pallets": vehicle.max_pallets,
 
                     "refrigerated": vehicle.refrigerated,
                     "hazardous_certified": vehicle.hazardous_certified,

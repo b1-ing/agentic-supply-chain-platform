@@ -1,4 +1,5 @@
 from models.order.incoming_order import IncomingOrder
+from models.depot import Depot
 from pydantic import BaseModel
 
 from .vehicle import VehicleResponse
@@ -22,6 +23,8 @@ class WorldResponse(BaseModel):
     summary: WorldSummaryResponse
 
     vehicles: list[VehicleResponse]
+
+    depots: list[Depot]
 
     new_orders: list[IncomingOrder]
     orders_in_progress: list[IncomingOrder]

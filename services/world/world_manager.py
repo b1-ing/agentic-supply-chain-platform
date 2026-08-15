@@ -43,6 +43,7 @@ class WorldManager:
     def initialise(
         self,
         graph,
+        depots,
         vehicles,
         mapping=None,
     ) -> None:
@@ -53,6 +54,7 @@ class WorldManager:
         with self._lock:
             self._world = WorldState(
                 graph=graph,
+                depots=depots,
                 mapping=mapping,
                 vehicles=vehicles,
             )

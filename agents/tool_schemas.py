@@ -1,3 +1,188 @@
+TRAFFIC_TOOL_SCHEMAS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "report_traffic_incident",
+            "description": (
+                "Report a new traffic incident such as a road closure, "
+                "accident, roadworks, or other disruption."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "road_name": {
+                        "type": ["string", "null"],
+                        "description": "Name of the affected road or road segment."
+                    },
+                    "incident_type": {
+                        "type": "string",
+                        "description": "Type of traffic incident."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Description of the incident."
+                    },
+                    "severity": {
+                        "type": "number",
+                        "description": "Incident severity from 0 to 1."
+                    },
+                    "latitude": {
+                        "type": ["number", "null"],
+                        "description": "Latitude of the incident, if known."
+                    },
+                    "longitude": {
+                        "type": ["number", "null"],
+                        "description": "Longitude of the incident, if known."
+                    },
+                    "end_time": {
+                        "type": ["string", "null"],
+                        "description": "Optional ISO-8601 end time."
+                    }
+                },
+                "required": [
+                    "road_name",
+                    "incident_type",
+                    "description",
+                    "severity",
+                    "latitude",
+                    "longitude",
+                    "end_time"
+                ],
+                "additionalProperties": False
+            }
+        }
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "get_traffic_incidents",
+            "description": (
+                "Get all currently active traffic incidents in the WorldState."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False
+            }
+        }
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "find_affected_routes",
+            "description": (
+                "Find currently active vehicle routes affected by "
+                "a specific traffic incident."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "incident_id": {
+                        "type": "string",
+                        "description": "ID of the traffic incident."
+                    }
+                },
+                "required": [
+                    "incident_id"
+                ],
+                "additionalProperties": False
+            }
+        }
+    },
+
+    {
+        "type": "function",
+        "function": {
+            "name": "reroute_affected_routes",
+            "description": (
+                "Reroute all currently active vehicle routes affected "
+                "by a specific traffic incident."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "incident_id": {
+                        "type": "string",
+                        "description": "ID of the traffic incident."
+                    }
+                },
+                "required": [
+                    "incident_id"
+                ],
+                "additionalProperties": False
+            }
+        }
+    }
+]
+
+ORDER_TOOL_SCHEMAS=[
+    {
+    "type": "function",
+    "function": {
+        "name": "modify_active_order",
+        "description": (
+            "Modify an order that is currently in progress. "
+            "Changes to routing-relevant fields invalidate the "
+            "current route and mark the world as requiring replanning."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "order_id": {
+                    "type": "string",
+                    "description": "ID of the active order to modify."
+                },
+                "updates": {
+                    "type": "object",
+                    "description": (
+                        "Fields to update on the active order. "
+                        "Do not include protected routing-derived fields."
+                    ),
+                    "additionalProperties": True
+                }
+            },
+            "required": [
+                "order_id",
+                "updates"
+            ],
+            "additionalProperties": False
+        }
+    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_active_order",
+            "description": (
+                "Cancel an order that is currently in progress. "
+                "Moves the order to cancelled_orders, releases its "
+                "assigned vehicle, removes its current route, and "
+                "marks the world as requiring replanning."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "order_id": {
+                        "type": "string",
+                        "description": "ID of the active order to cancel."
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Optional reason for cancellation."
+                    }
+                },
+                "required": [
+                    "order_id"
+                ],
+                "additionalProperties": False
+            }
+        }
+    }
+]
+
 TOOLS_SCHEMA = [
     {
         "type": "function",
@@ -41,12 +226,6 @@ TOOLS_SCHEMA = [
                             },
                             "weight_kg": {
                                 "type": ["number", "null"]
-                            },
-                            "volume_m3": {
-                                "type": ["number", "null"]
-                            },
-                            "pallets": {
-                                "type": ["integer", "null"]
                             },
                             "refrigerated": {
                                 "type": "boolean"
@@ -348,5 +527,150 @@ TOOLS_SCHEMA = [
                 "additionalProperties": False
             }
         }
-    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "modify_order",
+            "description": (
+                "Modify an existing order that has not yet entered active "
+                "execution. Use this when the user wants to change order "
+                "details such as weight, addresses, cargo requirements, "
+                "time windows, notes, or routing constraints. "
+                "Do not modify routing-derived fields such as coordinates, "
+                "graph nodes, or vehicle assignment directly."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "order_id": {
+                        "type": "string",
+                        "description": (
+                            "The ID of the order to modify, for example "
+                            "'ORDER-12345678'."
+                        ),
+                    },
+                    "updates": {
+                        "type": "object",
+                        "description": (
+                            "Fields to change on the order. Only include "
+                            "fields that the user explicitly wants changed."
+                        ),
+                        "properties": {
+                            "pickup_address": {
+                                "type": ["string", "null"],
+                            },
+                            "delivery_address": {
+                                "type": ["string", "null"],
+                            },
+                            "weight_kg": {
+                                "type": ["number", "null"],
+                            },
+                            "height_m": {
+                                "type": ["number", "null"],
+                            },
+                            "refrigerated": {
+                                "type": ["boolean", "null"],
+                            },
+                            "hazardous": {
+                                "type": ["boolean", "null"],
+                            },
+                            "fragile": {
+                                "type": ["boolean", "null"],
+                            },
+                            "oversized": {
+                                "type": ["boolean", "null"],
+                            },
+                            "earliest_pickup": {
+                                "type": ["string", "null"],
+                            },
+                            "latest_pickup": {
+                                "type": ["string", "null"],
+                            },
+                            "earliest_delivery": {
+                                "type": ["string", "null"],
+                            },
+                            "latest_delivery": {
+                                "type": ["string", "null"],
+                            },
+                            "constraints": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "avoid_road",
+                                                "avoid_area",
+                                                "required_road",
+                                                "required_area",
+                                                "required_waypoint",
+                                                "max_route_time",
+                                                "max_route_distance",
+                                                "minimize_unnecessary_delay",
+                                            ],
+                                        },
+                                        "value": {},
+                                        "hard": {
+                                            "type": "boolean",
+                                        },
+                                        "reason": {
+                                            "type": ["string", "null"],
+                                        },
+                                    },
+                                    "required": [
+                                        "type",
+                                        "value",
+                                        "hard",
+                                        "reason",
+                                    ],
+                                    "additionalProperties": False,
+                                },
+                            },
+                            "notes": {
+                                "type": ["string", "null"],
+                            },
+                        },
+                        "additionalProperties": False,
+                    },
+                },
+                "required": [
+                    "order_id",
+                    "updates",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_order",
+            "description": (
+                "Delete an order from the operational world state. "
+                "Use this when the user explicitly asks to remove or "
+                "delete an order. Orders currently in progress cannot "
+                "be deleted directly and require cancellation or "
+                "replanning instead."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "order_id": {
+                        "type": "string",
+                        "description": (
+                            "The ID of the order to delete."
+                        ),
+                    },
+                },
+                "required": [
+                    "order_id",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    },
+    *TRAFFIC_TOOL_SCHEMAS,
+    *ORDER_TOOL_SCHEMAS
 ]

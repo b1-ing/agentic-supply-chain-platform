@@ -15,7 +15,7 @@ from models.vehicles.vehicle import Vehicle
 @dataclass
 class WorldState:
     # 1. Non-default arguments MUST go at the very top
-    # depots: list[Depot]
+    depots: list[Depot]
 
     graph: nx.MultiDiGraph = None
     mapping: dict = None

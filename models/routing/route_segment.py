@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class RouteSegment:
+    nodes: list[int]
+
     geometry: list[tuple[float, float]]
 
     distance: float

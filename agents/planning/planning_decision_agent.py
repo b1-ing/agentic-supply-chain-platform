@@ -150,7 +150,6 @@ class PlanningDecisionAgent:
                     "pickup_node": order.pickup_node,
                     "delivery_node": order.delivery_node,
                     "weight_kg": order.weight_kg,
-                    "volume_m3": order.volume_m3,
                     "refrigerated": order.refrigerated,
                     "hazardous": order.hazardous,
                     "fragile": order.fragile,

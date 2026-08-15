@@ -21,8 +21,6 @@ def serialize_vehicle(vehicle) -> VehicleResponse:
         current_lat=vehicle.current_lat,
         current_lon=vehicle.current_lon,
         max_weight_kg=vehicle.max_weight_kg,
-        max_volume_m3=vehicle.max_volume_m3,
-        max_pallets=vehicle.max_pallets,
         height_m=vehicle.height_m,
         width_m=vehicle.width_m,
         length_m=vehicle.length_m,

@@ -21,6 +21,8 @@ class Vehicle(BaseModel, ABC):
 
     route_progress_m: float = 0.0
 
+    depot_id: str
+
     current_node: Optional[int] = None
     current_lat: Optional[float] = None
     current_lon: Optional[float] = None
@@ -28,8 +30,6 @@ class Vehicle(BaseModel, ABC):
     current_route: VehicleRoute | None = None
 
     max_weight_kg: float
-    max_volume_m3: float
-    max_pallets: int
 
     height_m: float
     width_m: float

@@ -14,7 +14,7 @@ from models.routing.compatibility_result import CompatibilityStatus
 from typing import Any
 import re
 import networkx as nx
-
+import osmnx as ox
 from services.world.world_manager import world_manager
 from services.routing.onemap_routing_service import OneMapRoutingService
 
@@ -66,11 +66,17 @@ class SimpleRoutingTool:
             if not result["success"]:
                 return result
 
-            origin_location = {
-                "name": result["location"],
-                "lat": result["latitude"],
-                "lon": result["longitude"],
-            }
+            origin_location = RoutingLocation(
+                    matrix_index=0,
+                    graph_node=ox.distance.nearest_nodes(
+                        world.graph,
+                        result["longitude"],
+                        result["latitude"],
+                    ),
+                    lat=result["latitude"],
+                    lon=result["longitude"],
+                    kind="routing",
+                )
 
         destination_location = self._resolve_location(
             world,
@@ -83,11 +89,17 @@ class SimpleRoutingTool:
             if not result["success"]:
                 return result
 
-            destination_location = {
-                "name": result["location"],
-                "lat": result["latitude"],
-                "lon": result["longitude"],
-            }
+            destination_location = RoutingLocation(
+                    matrix_index=0,
+                    graph_node=ox.distance.nearest_nodes(
+                        world.graph,
+                        result["longitude"],
+                        result["latitude"],
+                    ),
+                    lat=result["latitude"],
+                    lon=result["longitude"],
+                    kind="routing",
+                )
 
 
         # ---------------------------------------------------------
@@ -431,8 +443,6 @@ class SimpleRoutingTool:
             for road in avoid_roads if road.strip()
         ]
 
-        if not avoid_patterns:
-            return graph # Quick exit if no roads to avoid
 
         # 2. Iterate and filter
         for u, v, key, data in list(graph.edges(keys=True, data=True)):
@@ -480,17 +490,8 @@ class SimpleRoutingTool:
         # Snap locations to graph
         # ---------------------------------------------------------
 
-        origin_node = self._nearest_node(
-            graph,
-            origin.lat,
-            origin.lon,
-        )
-
-        destination_node = self._nearest_node(
-            graph,
-            destination.lat,
-            destination.lon,
-        )
+        origin_node = origin.graph_node
+        destination_node = destination.graph_node
 
         if origin_node is None:
             return {
@@ -927,8 +928,10 @@ def decide_routing_strategy(
 
     order = next(
         (
-            o for o in world.new_orders
-            + world.orders_in_progress
+            o for o in (
+                world.new_orders
+                + world.orders_in_progress
+            )
             if o.order_id == order_id
         ),
         None,
@@ -940,46 +943,102 @@ def decide_routing_strategy(
             "error": f"Order {order_id} not found.",
         }
 
-    # Count currently routable work
-    routable_orders = [
-        o for o in (
-            world.new_orders
-            + world.orders_in_progress
-        )
+    # ---------------------------------------------------------
+    # Find the order's current assignment
+    # ---------------------------------------------------------
+
+    assigned_vehicle_id = getattr(
+        order,
+        "assigned_vehicle",
+        None,
+    )
+
+    # ---------------------------------------------------------
+    # SIMPLE ROUTING
+    #
+    # If this order already has a specific vehicle assigned,
+    # there is no need for fleet-wide optimisation.
+    # ---------------------------------------------------------
+
+    if assigned_vehicle_id:
+        return {
+            "success": True,
+            "order_id": order_id,
+            "strategy": "SIMPLE",
+            "reason": (
+                f"Order is already assigned to vehicle "
+                f"{assigned_vehicle_id}; only its route needs "
+                f"to be computed."
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # Count genuinely unassigned NEW orders.
+    #
+    # Orders already in progress have already been assigned
+    # and should not automatically trigger CVRP.
+    # ---------------------------------------------------------
+
+    unassigned_orders = [
+        o
+        for o in world.new_orders
+        if not getattr(o, "assigned_vehicle", None)
     ]
 
-    available_vehicles = [
-        v for v in world.vehicles
-        if v.status == "AVAILABLE"
-    ]
+    # ---------------------------------------------------------
+    # ONE UNASSIGNED ORDER
+    #
+    # If compatibility has already selected a vehicle, use
+    # simple routing.
+    # ---------------------------------------------------------
 
-    # Simple heuristic for now
-    if len(routable_orders) <= 1 and len(available_vehicles) <= 1:
-        strategy = "SIMPLE"
-        reason = (
-            "Only one routable order and no meaningful "
-            "fleet optimisation is required."
-        )
-    else:
-        strategy = "CVRP"
-        reason = (
-            "Multiple routable orders or vehicles make "
-            "fleet-wide optimisation useful."
-        )
+    if len(unassigned_orders) == 1:
+        return {
+            "success": True,
+            "order_id": order_id,
+            "strategy": "SIMPLE",
+            "reason": (
+                "Only one unassigned order requires routing; "
+                "fleet-wide optimisation is unnecessary."
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # MULTIPLE UNASSIGNED ORDERS
+    #
+    # This is where CVRP becomes useful.
+    # ---------------------------------------------------------
+
+    if len(unassigned_orders) > 1:
+        return {
+            "success": True,
+            "order_id": order_id,
+            "strategy": "CVRP",
+            "reason": (
+                f"{len(unassigned_orders)} unassigned orders "
+                "require joint fleet assignment and routing."
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # FALLBACK
+    # ---------------------------------------------------------
 
     return {
         "success": True,
         "order_id": order_id,
-        "strategy": strategy,
-        "reason": reason,
+        "strategy": "SIMPLE",
+        "reason": (
+            "No fleet-wide optimisation is required."
+        ),
     }
 
 
-def plan_routes():
+async def plan_routes():
 
     world = world_manager.get_world()
 
-    route_plan = routing_service.plan_routes(world)
+    route_plan = await routing_service.plan_routes(world)
 
     if route_plan is None:
         return {
@@ -1036,10 +1095,12 @@ async def simple_fleet_route(order_id: str):
 
     compatibility = await compatibility_service.evaluate(order_id)
 
+    print(compatibility)
+
     if not compatibility["success"]:
         return compatibility
 
-    if compatibility["status"] != "ROUTABLE":
+    if compatibility["status"] == "UNSERVICEABLE":
         return {
             "success": False,
             "order_id": order_id,
@@ -1094,20 +1155,34 @@ async def simple_fleet_route(order_id: str):
             "error": "Order locations have not been geocoded.",
         }
 
+    # ---------------------------------------------------------
+    # Build routing locations
+    # ---------------------------------------------------------
+
     origin = RoutingLocation(
-        kind="pickup",
-        lat=order.pickup_lat,
-        lon=order.pickup_lon,
-        graph_node=order.pickup_node,
-        matrix_index=None,
+        matrix_index=0,
+        graph_node=vehicle.current_node,
+        lat=vehicle.current_lat,
+        lon=vehicle.current_lon,
+        kind="vehicle",
     )
 
-    destination = RoutingLocation(
-        kind="delivery",
+    pickup = RoutingLocation(
+        matrix_index=1,
+        graph_node=order.pickup_node,
+        lat=order.pickup_lat,
+        lon=order.pickup_lon,
+        kind="pickup",
+        order_id=order.order_id,
+    )
+
+    delivery = RoutingLocation(
+        matrix_index=2,
+        graph_node=order.delivery_node,
         lat=order.delivery_lat,
         lon=order.delivery_lon,
-        graph_node=order.delivery_node,
-        matrix_index=None,
+        kind="delivery",
+        order_id=order.order_id,
     )
 
     # ---------------------------------------------------------
@@ -1132,54 +1207,65 @@ async def simple_fleet_route(order_id: str):
         elif constraint_type == "required_waypoint":
             required_waypoints.append(value)
 
-        # These are currently not directly translated into
-        # simple_routing_tool.route() arguments.
-        #
-        # required_road
-        # required_area
-        # max_route_time
-        # max_route_distance
-        # minimize_unnecessary_delay
-
     # ---------------------------------------------------------
-    # Build constrained route on OSM graph
+    # Route:
+    #
+    #   vehicle current position
+    #           ↓
+    #        pickup
+    #           ↓
+    #       delivery
+    #
     # ---------------------------------------------------------
 
-    result = simple_routing_tool.route_locations(
-        world=world,
-        origin=origin,
-        destination=destination,
-        avoid_roads=avoid_roads,
-        avoid_areas=avoid_areas,
-        required_waypoints=required_waypoints,
-    )
+    legs = [
+        (origin, pickup),
+        (pickup, delivery),
+        (delivery, origin),
+    ]
 
-    if not result["success"]:
-        return {
-            "success": False,
-            "order_id": order_id,
-            "vehicle_id": vehicle_id,
-            "status": "UNROUTABLE",
-            "error": result.get("error"),
-        }
+    segments = []
 
-    route_data = result["route"]
+    total_distance = 0.0
+    total_travel_time = 0.0
 
-    print("[DEBUG] SIMPLE ROUTE RESULT:")
-    print(result)
-    print("[DEBUG] ROUTE DATA KEYS:")
-    print(result.get("route", {}).keys())
+    for leg_origin, leg_destination in legs:
 
+        result = simple_routing_tool.route_locations(
+            world=world,
+            origin=leg_origin,
+            destination=leg_destination,
+            avoid_roads=avoid_roads,
+            avoid_areas=avoid_areas,
+            required_waypoints=required_waypoints,
+        )
+
+        if not result["success"]:
+            return {
+                "success": False,
+                "order_id": order_id,
+                "vehicle_id": vehicle_id,
+                "status": "UNROUTABLE",
+                "error": result.get("error"),
+            }
+
+        route_data = result["route"]
+
+        segment = RouteSegment(
+            nodes=route_data["nodes"],
+            geometry=route_data["geometry"],
+            distance=route_data["distance_m"],
+            travel_time=route_data["travel_time_s"],
+            instructions=[],
+        )
+
+        segments.append(segment)
+
+        total_distance += route_data["distance_m"]
+        total_travel_time += route_data["travel_time_s"]
     # ---------------------------------------------------------
     # Build RouteSegment
     # ---------------------------------------------------------
-
-    segment = RouteSegment(
-        geometry=route_data["geometry"],
-        distance=route_data["distance_m"],
-        travel_time=route_data["travel_time_s"],
-        instructions=[],
-    )
 
     # ---------------------------------------------------------
     # Build RouteStops
@@ -1192,7 +1278,15 @@ async def simple_fleet_route(order_id: str):
         ),
         RouteStop(
             sequence=1,
-            location=destination,
+            location=pickup,
+        ),
+        RouteStop(
+            sequence=2,
+            location=delivery,
+        ),
+        RouteStop(
+            sequence=3,
+            location=origin,
         ),
     ]
 
@@ -1206,9 +1300,9 @@ async def simple_fleet_route(order_id: str):
         route_id=route_id,
         vehicle_id=vehicle.vehicle_id,
         stops=stops,
-        segments=[segment],
-        total_distance=route_data["distance_m"],
-        total_travel_time=route_data["travel_time_s"],
+        segments=segments,
+        total_distance=total_distance,
+        total_travel_time=total_travel_time,
     )
 
     # ---------------------------------------------------------
@@ -1238,8 +1332,8 @@ async def simple_fleet_route(order_id: str):
         "order_id": order_id,
         "vehicle_id": vehicle.vehicle_id,
         "route_id": route_id,
-        "distance_m": vehicle_route.total_distance,
-        "travel_time_s": vehicle_route.total_travel_time,
+        "distance_m": total_distance,
+        "travel_time_s": total_travel_time,
         "status": "ROUTED",
         "routing_mode": "SIMPLE",
         "avoid_roads": avoid_roads,

@@ -9,7 +9,9 @@ from models.order.order_assessment import OrderAssessment
 from services.world.world_manager import world_manager
 from models.order.incoming_order import IncomingOrder
 from models.order.order_constraint import OrderConstraint
-
+import json
+from models.vehicles.vehicle import VehicleStatus
+from agents.tools.routing_tools import simple_fleet_route
 
 
 async def create_order(
@@ -57,8 +59,6 @@ async def create_order(
         delivery_address=data["delivery_address"],
 
         weight_kg=data.get("weight_kg"),
-        volume_m3=data.get("volume_m3"),
-        pallets=data.get("pallets"),
 
         refrigerated=data.get("refrigerated", False),
         hazardous=data.get("hazardous", False),
@@ -95,6 +95,18 @@ async def create_order(
 client = AsyncOpenAI(
     api_key=os.environ["OPENAI_API_KEY"]
 )
+
+world = world_manager.get_world()
+
+depot_context = [
+    {
+        "depot_id": depot.depot_id,
+        "name": depot.depot_id,
+    }
+    for depot in world.depots
+]
+
+print(depot_context)
 SYSTEM_PROMPT = """
 You are the order-assessment component of an agentic supply-chain
 management system.
@@ -141,8 +153,6 @@ LOCATIONS:
 
 CARGO:
 - weight_kg
-- volume_m3
-- pallets
 - height_m
 - width_m
 - length_m
@@ -235,6 +245,13 @@ Use a ROAD type when the value is a named:
 - parkway
 - road segment
 - transport corridor
+- flyovers
+- bridges
+- viaducts
+- ramps
+- interchanges
+- junctions
+- road segments
 
 Examples:
 
@@ -394,6 +411,28 @@ NEVER output:
 NEVER output any constraint type other than the eight allowed types.
 
 
+The system may contain known depots.
+
+When the user refers to a depot using phrases such as:
+
+- "the depot"
+- "the depot in the system"
+- "our depot"
+- "the system depot"
+- "the depot at Paya Lebar"
+
+you MUST resolve it against the provided system depot list.
+
+Do not treat a known system depot as an arbitrary address.
+
+If exactly one system depot exists and the user says "the depot",
+use that depot's depot_id.
+
+Known system depots:
+
+{DEPOTS}
+
+
 ============================================================
 OUTPUT
 ============================================================
@@ -402,7 +441,10 @@ Return exactly one IncomingOrder object.
 
 Do not return explanations, markdown, or additional text.
 """
-
+system_prompt = SYSTEM_PROMPT.replace(
+    "{DEPOTS}",
+    json.dumps(depot_context, indent=2)
+)
 
 async def assess_order(
     prompt: str,
@@ -413,7 +455,7 @@ async def assess_order(
         input=[
             {
                 "role": "system",
-                "content": SYSTEM_PROMPT,
+                "content": system_prompt,
             },
             {
                 "role": "user",
@@ -441,3 +483,606 @@ async def evaluate_compatibility(
     return await service.evaluate(
         order_id,
     )
+
+def _find_order(
+    order_id: str,
+):
+    """
+    Find an order in WorldState.
+
+    Returns:
+        (order, collection_name)
+    """
+
+    world = world_manager.get_world()
+
+    collections = [
+        ("new_orders", world.new_orders),
+        ("orders_in_progress", world.orders_in_progress),
+        ("cancelled_orders", world.cancelled_orders),
+        ("unserviceable_orders", world.unserviceable_orders),
+    ]
+
+    for collection_name, orders in collections:
+        for order in orders:
+            if order.order_id == order_id:
+                return order, collection_name
+
+    return None, None
+
+
+async def modify_order(
+    order_id: str,
+    updates: dict,
+) -> dict:
+    """
+    Modify an existing order.
+
+    Only explicitly supplied fields are changed.
+
+    Routing-derived fields cannot be modified directly.
+    """
+
+    world = world_manager.get_world()
+
+    order, collection_name = _find_order(
+        order_id,
+    )
+
+    if order is None:
+        return {
+            "success": False,
+            "error": f"Order '{order_id}' not found.",
+        }
+
+    if not updates:
+        return {
+            "success": False,
+            "error": "No updates were provided.",
+        }
+
+    # ---------------------------------------------------------
+    # Fields that must be changed through other tools/workflows
+    # ---------------------------------------------------------
+
+    protected_fields = {
+        "order_id",
+        "assigned_vehicle",
+        "pickup_lat",
+        "pickup_lon",
+        "delivery_lat",
+        "delivery_lon",
+        "pickup_node",
+        "delivery_node",
+    }
+
+    protected = protected_fields.intersection(
+        updates.keys()
+    )
+
+    if protected:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                "The following fields cannot be modified directly: "
+                + ", ".join(sorted(protected))
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # Only allow fields that actually exist on IncomingOrder
+    # ---------------------------------------------------------
+
+    valid_fields = set(
+        IncomingOrder.model_fields.keys()
+    )
+
+    unknown_fields = [
+        field
+        for field in updates
+        if field not in valid_fields
+    ]
+
+    if unknown_fields:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                "Unknown order fields: "
+                + ", ".join(unknown_fields)
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # Do not silently modify an order that is already in progress
+    # ---------------------------------------------------------
+
+    if collection_name == "orders_in_progress":
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                "Order is currently in progress. "
+                "Modifying an in-progress order requires "
+                "the operational replanning workflow."
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # Save old values
+    # ---------------------------------------------------------
+
+    previous_values = {
+        field: getattr(order, field)
+        for field in updates
+    }
+
+    # ---------------------------------------------------------
+    # Apply updates
+    # ---------------------------------------------------------
+
+    try:
+        for field, value in updates.items():
+            setattr(order, field, value)
+
+    except Exception as exc:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": f"Failed to modify order: {exc}",
+        }
+
+    # ---------------------------------------------------------
+    # Address changes invalidate existing geocoding
+    # ---------------------------------------------------------
+
+    routing_invalidated = False
+
+    if "pickup_address" in updates:
+
+        order.pickup_lat = None
+        order.pickup_lon = None
+        order.pickup_node = None
+
+        routing_invalidated = True
+
+    if "delivery_address" in updates:
+
+        order.delivery_lat = None
+        order.delivery_lon = None
+        order.delivery_node = None
+
+        routing_invalidated = True
+
+    return {
+        "success": True,
+        "order_id": order_id,
+        "updated_fields": list(updates.keys()),
+        "previous_values": previous_values,
+        "routing_invalidated": routing_invalidated,
+        "message": (
+            f"Order '{order_id}' modified successfully."
+        ),
+    }
+
+
+async def delete_order(
+    order_id: str,
+) -> dict:
+    """
+    Delete an order from WorldState.
+
+    NEW orders can be deleted directly.
+
+    Orders currently in progress cannot be deleted directly.
+    """
+
+    world = world_manager.get_world()
+
+    # ---------------------------------------------------------
+    # NEW
+    # ---------------------------------------------------------
+
+    for index, order in enumerate(world.new_orders):
+
+        if order.order_id == order_id:
+
+            world.new_orders.pop(index)
+
+            return {
+                "success": True,
+                "order_id": order_id,
+                "previous_collection": "new_orders",
+                "message": (
+                    f"Order '{order_id}' deleted successfully."
+                ),
+            }
+
+    # ---------------------------------------------------------
+    # IN PROGRESS
+    # ---------------------------------------------------------
+
+    for order in world.orders_in_progress:
+
+        if order.order_id == order_id:
+
+            return {
+                "success": False,
+                "order_id": order_id,
+                "error": (
+                    "Order is currently in progress and cannot "
+                    "be deleted directly. Cancel or replan the "
+                    "associated route first."
+                ),
+            }
+
+    # ---------------------------------------------------------
+    # CANCELLED
+    # ---------------------------------------------------------
+
+    for index, order in enumerate(world.cancelled_orders):
+
+        if order.order_id == order_id:
+
+            world.cancelled_orders.pop(index)
+
+            return {
+                "success": True,
+                "order_id": order_id,
+                "previous_collection": "cancelled_orders",
+                "message": (
+                    f"Order '{order_id}' deleted successfully."
+                ),
+            }
+
+    # ---------------------------------------------------------
+    # UNSERVICEABLE
+    # ---------------------------------------------------------
+
+    for index, order in enumerate(
+        world.unserviceable_orders
+    ):
+
+        if order.order_id == order_id:
+
+            world.unserviceable_orders.pop(index)
+
+            return {
+                "success": True,
+                "order_id": order_id,
+                "previous_collection": "unserviceable_orders",
+                "message": (
+                    f"Order '{order_id}' deleted successfully."
+                ),
+            }
+
+    return {
+        "success": False,
+        "order_id": order_id,
+        "error": f"Order '{order_id}' not found.",
+    }
+
+# ============================================================
+# MODIFY ACTIVE ORDER
+# ============================================================
+
+async def modify_active_order(
+    order_id: str,
+    updates: dict,
+) -> dict:
+    """
+    Modify an order that is currently in progress.
+
+    Active orders cannot be modified without invalidating their
+    current routing plan.
+
+    The order remains active after modification, but its current
+    route should be replanned before execution continues.
+    """
+
+    world = world_manager.get_world()
+
+    # ---------------------------------------------------------
+    # Find active order
+    # ---------------------------------------------------------
+
+    order = next(
+        (
+            order
+            for order in world.orders_in_progress
+            if order.order_id == order_id
+        ),
+        None,
+    )
+
+    if order is None:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                f"Active order '{order_id}' not found."
+            ),
+        }
+
+    if not updates:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": "No updates were provided.",
+        }
+
+    # ---------------------------------------------------------
+    # Fields that cannot be modified directly
+    # ---------------------------------------------------------
+
+    protected_fields = {
+        "order_id",
+        "assigned_vehicle",
+        "pickup_lat",
+        "pickup_lon",
+        "delivery_lat",
+        "delivery_lon",
+        "pickup_node",
+        "delivery_node",
+    }
+
+    protected = protected_fields.intersection(
+        updates.keys()
+    )
+
+    if protected:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                "The following fields cannot be modified directly: "
+                + ", ".join(sorted(protected))
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # Validate fields
+    # ---------------------------------------------------------
+
+    valid_fields = set(
+        IncomingOrder.model_fields.keys()
+    )
+
+    unknown_fields = [
+        field
+        for field in updates
+        if field not in valid_fields
+    ]
+
+    if unknown_fields:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                "Unknown order fields: "
+                + ", ".join(unknown_fields)
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # Save previous values
+    # ---------------------------------------------------------
+
+    previous_values = {
+        field: getattr(order, field)
+        for field in updates
+    }
+
+    # ---------------------------------------------------------
+    # Apply updates
+    # ---------------------------------------------------------
+
+    try:
+        for field, value in updates.items():
+            setattr(order, field, value)
+
+    except Exception as exc:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                f"Failed to modify active order: {exc}"
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # Determine whether routing is invalidated
+    # ---------------------------------------------------------
+
+    routing_fields = {
+        "pickup_address",
+        "delivery_address",
+        "weight_kg",
+        "height_m",
+        "width_m",
+        "length_m",
+        "refrigerated",
+        "hazardous",
+        "fragile",
+        "oversized",
+        "earliest_pickup",
+        "latest_pickup",
+        "earliest_delivery",
+        "latest_delivery",
+        "constraints",
+    }
+
+    routing_invalidated = bool(
+        routing_fields.intersection(updates.keys())
+    )
+
+    # Address changes invalidate resolved locations
+    if "pickup_address" in updates:
+        order.pickup_lat = None
+        order.pickup_lon = None
+        order.pickup_node = None
+        routing_invalidated = True
+
+    if "delivery_address" in updates:
+        order.delivery_lat = None
+        order.delivery_lon = None
+        order.delivery_node = None
+        routing_invalidated = True
+
+    # ---------------------------------------------------------
+    # Mark world as requiring replanning
+    # ---------------------------------------------------------
+
+    if routing_invalidated:
+        world.recommend_replan = True
+
+        reroute_result = await simple_fleet_route(
+                order_id
+            )
+
+    return {
+        "success": True,
+        "order_id": order_id,
+        "updated_fields": list(updates.keys()),
+        "previous_values": previous_values,
+        "routing_invalidated": routing_invalidated,
+        "recommend_replan": routing_invalidated,
+        "status": "IN_PROGRESS",
+        "message": (
+            f"Active order '{order_id}' modified successfully."
+        ),
+        "reroute": reroute_result,
+    }
+
+
+# ============================================================
+# CANCEL ACTIVE ORDER
+# ============================================================
+
+async def cancel_active_order(
+    order_id: str,
+    reason: str = "",
+) -> dict:
+    """
+    Cancel an order currently in progress.
+
+    The order is removed from active execution and moved to
+    world.cancelled_orders.
+
+    The associated vehicle route is marked for replanning.
+    """
+
+    world = world_manager.get_world()
+
+    # ---------------------------------------------------------
+    # Find active order
+    # ---------------------------------------------------------
+
+    order = next(
+        (
+            order
+            for order in world.orders_in_progress
+            if order.order_id == order_id
+        ),
+        None,
+    )
+
+    if order is None:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "error": (
+                f"Active order '{order_id}' not found."
+            ),
+        }
+
+    # ---------------------------------------------------------
+    # Find associated vehicle
+    # ---------------------------------------------------------
+
+    vehicle = None
+
+    if order.assigned_vehicle:
+        vehicle = next(
+            (
+                v
+                for v in world.vehicles
+                if v.vehicle_id == order.assigned_vehicle
+            ),
+            None,
+        )
+
+    # ---------------------------------------------------------
+    # Find associated route
+    # ---------------------------------------------------------
+
+    route = None
+
+    if order.assigned_vehicle:
+        route = next(
+            (
+                r
+                for r in world.routes
+                if r.vehicle_id == order.assigned_vehicle
+            ),
+            None,
+        )
+
+    # ---------------------------------------------------------
+    # Cancel order
+    # ---------------------------------------------------------
+
+    world.orders_in_progress.remove(order)
+
+    if order not in world.cancelled_orders:
+        world.cancelled_orders.append(order)
+
+    # ---------------------------------------------------------
+    # Clear order assignment
+    # ---------------------------------------------------------
+
+    order.assigned_vehicle = None
+
+    # ---------------------------------------------------------
+    # Vehicle becomes available for replanning
+    # ---------------------------------------------------------
+
+    if vehicle is not None:
+        vehicle.current_route_id = None
+        vehicle.current_route = None
+        vehicle.status = VehicleStatus.IDLE
+
+    # ---------------------------------------------------------
+    # Remove obsolete route
+    # ---------------------------------------------------------
+
+    if route is not None:
+        world.routes.remove(route)
+
+    # ---------------------------------------------------------
+    # Replanning may be required for the fleet
+    # ---------------------------------------------------------
+
+    world.recommend_replan = True
+
+    return {
+        "success": True,
+        "order_id": order_id,
+        "status": "CANCELLED",
+        "reason": reason,
+        "vehicle_id": (
+            vehicle.vehicle_id
+            if vehicle
+            else None
+        ),
+        "route_id": (
+            route.route_id
+            if route
+            else None
+        ),
+        "recommend_replan": True,
+        "message": (
+            f"Active order '{order_id}' cancelled successfully."
+        ),
+    }

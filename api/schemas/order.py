@@ -18,8 +18,6 @@ class OrderResponse(BaseModel):
 
     height_m: float | None = None
     weight_kg: float | None = None
-    volume_m3: float | None = None
-    pallets: int | None = None
 
     refrigerated: bool
     hazardous: bool

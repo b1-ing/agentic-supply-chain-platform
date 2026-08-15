@@ -17,11 +17,6 @@ def validate_order(state):
     if order.weight_kg and order.weight_kg < 0:
         errors.append("Weight cannot be negative.")
 
-    if order.volume_m3 and order.volume_m3 < 0:
-        errors.append("Volume cannot be negative.")
-
-    if order.pallets and order.pallets < 0:
-        errors.append("Pallet count cannot be negative.")
 
     if (
         order.earliest_delivery

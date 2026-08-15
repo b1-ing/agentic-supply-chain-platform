@@ -36,11 +36,6 @@ class IncomingOrder(BaseModel):
 
     weight_kg: Optional[float] = Field(default=None, description="Weight in kilograms.")
 
-    volume_m3: Optional[float] = Field(
-        default=None, description="Cargo volume in cubic metres."
-    )
-
-    pallets: Optional[int] = Field(default=None, description="Number of pallets.")
 
     refrigerated: Optional[bool] = Field(
         default=None, description="Whether refrigerated transport is required."
