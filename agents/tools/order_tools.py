@@ -341,7 +341,6 @@ When the user refers to a depot using phrases such as:
 - "the depot in the system"
 - "our depot"
 - "the system depot"
-- "the depot at Paya Lebar"
 
 you MUST resolve it against the provided system depot list.
 
@@ -375,6 +374,11 @@ async def assess_order(
     Processes a request for a new order from a prompt to operations agent,
     extracting info such as pickup and dropoff points, as well as
     making reasonable and strongly-supported inferences for constraints.
+
+    (Arguably, this should be in another separate agent/order_assessment_agent.py file
+    but... yeah. Please help me refactor it)
+
+    Returns a dict dumped from a OrderAssessment object!
     """
 
     response = await client.responses.parse(
@@ -406,12 +410,17 @@ async def assess_order(
 async def create_order(
     assessment: dict,
 ) -> dict:
+    """
+    Creates an IncomingOrder object based on the OrderAssessment-style
+    dict created from assess_order.
+    """
 
     missing_information = assessment.get(
         "missing_information",
         []
     )
 
+    #rejects order if there are missing fields
     if missing_information:
         return {
             "success": False,
@@ -429,20 +438,20 @@ async def create_order(
                 "minimize_unnecessary_delay"
             }
 
-    # 3. Defensive scrubbing BEFORE re-instantiation
-    if "constraints" in data:
-        cleaned_constraints = []
-        for c in data.get("constraints"):
-            # Normalize common LLM typos/truncations dynamically
-            c_type = c.get("type")
-            if c_type == "minimize_delay":
-                c["type"] = "minimize_unnecessary_delay"
-                c_type = "minimize_unnecessary_delay"
-
-            # Only keep it if it belongs to your literal Enum list
-            if c_type in VALID_ROUTING_TYPES:
-                cleaned_constraints.append(c)
-
+#     # 3. Defensive scrubbing BEFORE re-instantiation
+#     if "constraints" in data:
+#         cleaned_constraints = []
+#         for c in data.get("constraints"):
+#             # Normalize common LLM typos/truncations dynamically
+#             c_type = c.get("type")
+#             if c_type == "minimize_delay":
+#                 c["type"] = "minimize_unnecessary_delay"
+#                 c_type = "minimize_unnecessary_delay"
+#
+#             # Only keep it if it belongs to your literal Enum list
+#             if c_type in VALID_ROUTING_TYPES:
+#                 cleaned_constraints.append(c)
+    #creates new incomingorder object
     order = IncomingOrder(
         pickup_address=data["pickup_address"],
         delivery_address=data["delivery_address"],
@@ -461,10 +470,11 @@ async def create_order(
         earliest_delivery=data.get("earliest_delivery"),
         latest_delivery=data.get("latest_delivery"),
 
-        constraints=[
-            OrderConstraint(**constraint)
-            for constraint in cleaned_constraints
-        ],
+#         constraints=[
+#             OrderConstraint(**constraint)
+#             for constraint in cleaned_constraints
+#         ],
+        constraints=data.get("constraints"),
 
         notes=data.get("notes"),
     )
@@ -487,6 +497,9 @@ async def create_order(
 async def evaluate_compatibility(
     order_id: str,
 ) -> dict:
+    """
+    Calls the evaluate compatibility service, which then calls the compatibility agent.
+    """
 
     service = CompatibilityService()
 
@@ -527,7 +540,7 @@ async def modify_order(
     updates: dict,
 ) -> dict:
     """
-    Modify an existing order.
+    Modify an existing UNPLANNED order.
 
     Only explicitly supplied fields are changed.
 
@@ -638,6 +651,8 @@ async def modify_order(
             setattr(order, field, value)
 
     except Exception as exc:
+        for field, value in previous_values.items():
+            setattr(order, field, value)
         return {
             "success": False,
             "order_id": order_id,
@@ -682,11 +697,13 @@ async def delete_order(
     order_id: str,
 ) -> dict:
     """
-    Delete an order from WorldState.
+    Delete a UNPLANNED order from WorldState.
 
     NEW orders can be deleted directly.
 
     Orders currently in progress cannot be deleted directly.
+
+    In-progress orders must use the cancel_active_order tool.
     """
 
     world = world_manager.get_world()

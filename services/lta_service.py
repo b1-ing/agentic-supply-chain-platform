@@ -29,44 +29,6 @@ class LTADataMallClient:
         self.base_url = "https://datamall2.mytransport.sg/ltaodataservice"
         self.headers = {"AccountKey": self.account_key, "accept": "application/json"}
 
-    def export_lta_segments(self, lta_segments, output="debug/lta_segments.geojson"):
-        rows = []
-
-        for seg in lta_segments:
-            try:
-                line = LineString(
-                    [
-                        (float(seg["StartLon"]), float(seg["StartLat"])),
-                        (float(seg["EndLon"]), float(seg["EndLat"])),
-                    ]
-                )
-
-                rows.append(
-                    {
-                        "link_id": seg["LinkID"],
-                        "road_name": seg["RoadName"],
-                        "road_category": int(seg["RoadCategory"]),
-                        "speed_band": int(seg["SpeedBand"]),
-                        "min_speed": int(seg["MinimumSpeed"]),
-                        "max_speed": int(seg["MaximumSpeed"]),
-                        "geometry": line,
-                    }
-                )
-
-            except Exception as e:
-                print(f"Skipping LinkID {seg.get('LinkID')}: {e}")
-
-        gdf = gpd.GeoDataFrame(
-            rows,
-            geometry="geometry",
-            crs="EPSG:4326",
-        )
-
-        os.makedirs("debug", exist_ok=True)
-
-        gdf.to_file(output, driver="GeoJSON")
-
-        print(f"[+] Exported {len(gdf)} LTA segments to {output}")
 
 
     def fetch_all_pages(self, endpoint: str) -> List[Dict[str, Any]]:

@@ -18,6 +18,39 @@ import osmnx as ox
 from services.world.world_manager import world_manager
 from services.routing.onemap_routing_service import OneMapRoutingService
 
+import requests
+from shapely.geometry import shape
+
+
+def get_area_polygon(area_name: str):
+    response = requests.get(
+        "https://nominatim.openstreetmap.org/search",
+        params={
+            "q": f"{area_name}, Singapore",
+            "format": "json",
+            "polygon_geojson": 1,
+            "limit": 1,
+        },
+        headers={
+            "User-Agent": "agentic-supply-chain-platform"
+        },
+        timeout=10,
+    )
+
+    response.raise_for_status()
+
+    results = response.json()
+
+    if not results:
+        return None
+
+    geometry = results[0].get("geojson")
+
+    if geometry is None:
+        return None
+
+    return shape(geometry)
+
 
 class SimpleRoutingTool:
     """
@@ -33,8 +66,6 @@ class SimpleRoutingTool:
     - modify WorldState
     """
 
-    def __init__(self):
-        self.onemap = OneMapRoutingService()
 
     def route(
         self,
@@ -399,22 +430,6 @@ class SimpleRoutingTool:
 
         return None
 
-    # =============================================================
-    # OneMap
-    # =============================================================
-
-    def _route_onemap(
-        self,
-        origin,
-        destination,
-    ):
-
-        return self.onemap.route(
-            start_lat=origin["lat"],
-            start_lon=origin["lon"],
-            end_lat=destination["lat"],
-            end_lon=destination["lon"],
-        )
 
     # =============================================================
     # Constrained routing

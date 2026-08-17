@@ -20,7 +20,7 @@ class CompatibilityService:
     ) -> CompatibilityResult:
 
 
-
+        #directly calls the compatibility_agent
         result = await self.agent.evaluate(order_id)
 
         # ---------------------------------------------------------

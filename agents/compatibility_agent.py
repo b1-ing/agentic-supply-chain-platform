@@ -149,12 +149,7 @@ class CompatibilityAgent:
                 "error": f"Order '{order_id}' not found.",
             }
 
-        # ---------------------------------------------------------
         # Build order context
-        #
-        # These are already-assessed requirements.
-        # Do NOT derive new requirements here.
-        # ---------------------------------------------------------
 
         order_context = {
             "order_id": order.order_id,
