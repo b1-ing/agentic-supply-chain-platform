@@ -68,49 +68,6 @@ class LTADataMallClient:
 
         print(f"[+] Exported {len(gdf)} LTA segments to {output}")
 
-    async def fetch_all_pages_async(self, endpoint: str) -> List[Dict[str, Any]]:
-        """Handles the 500-record pagination limit asynchronously via OData ?$skip with a 2s throttle."""
-        results = []
-        skip = 0
-        url = f"{self.base_url}/{endpoint}"
-
-        # Use an async client context manager (or pass a shared client instance to the method)
-        async with httpx.AsyncClient() as client:
-            while True:
-                params = {"$skip": skip} if skip > 0 else {}
-                try:
-                    response = await client.get(
-                        url, headers=self.headers, params=params, timeout=15.0
-                    )
-
-                    if response.status_code != 200:
-                        print(
-                            f"[-] LTA API Error {response.status_code} on {endpoint}: {response.text}"
-                        )
-                        break
-
-                    data = response.json()
-                    records = data.get("value", [])
-
-                    if not records:
-                        break
-
-                    results.extend(records)
-
-                    if len(records) < 500:
-                        break  # Fetched the last page
-
-                    skip += 500
-
-                    # Non-blocking async sleep for 2 seconds
-                    await asyncio.sleep(0.2)
-
-                except Exception as e:
-                    print(f"[-] Request failed on endpoint {endpoint}: {e}")
-                    break
-
-        self.export_lta_segments(results)
-        return results
 
     def fetch_all_pages(self, endpoint: str) -> List[Dict[str, Any]]:
         """Handles the 500-record pagination limit automatically via OData ?$skip"""
@@ -148,7 +105,7 @@ class LTADataMallClient:
                     break
 
                 skip += 500
-                time.sleep(1)  # Small throttle to respect rate limits
+#                 time.sleep(0.1)  # Small throttle to respect rate limits
             except Exception as e:
                 print(f"[-] Request failed on endpoint {endpoint}: {e}")
                 break
@@ -333,29 +290,29 @@ class LTATrafficService:
     # ==========================================
     # STREAM 2: TEXTUAL TRAVEL TIME EXTRACTION
     # ==========================================
-    def fetch_macro_travel_times(
-        self, node_registry: Dict[str, int]
-    ) -> Dict[Tuple[int, int], int]:
-        """
-        Fetches checkpoint-to-checkpoint times and maps them to clean matrix index edge-costs.
-        Returns: {(from_node_id, to_node_id): duration_in_seconds}
-        """
-        raw_travel_times = self.client.fetch_all_pages(self.travel_times_endpoint)
-        print(
-            f"[*] [Travel Times] Ingested {len(raw_travel_times)} macro corridor segments."
-        )
-
-        macro_edge_costs = {}
-        for segment in raw_travel_times:
-            start_point = segment.get("StartPoint")
-            end_point = segment.get("EndPoint")
-            est_time_mins = segment.get("EstTime", 0)
-
-            if start_point in node_registry and end_point in node_registry:
-                from_id = node_registry[start_point]
-                to_id = node_registry[end_point]
-
-                # Convert minutes to seconds for internal solver precision
-                macro_edge_costs[(from_id, to_id)] = int(est_time_mins * 60)
-
-        return macro_edge_costs
+#     def fetch_macro_travel_times(
+#         self, node_registry: Dict[str, int]
+#     ) -> Dict[Tuple[int, int], int]:
+#         """
+#         Fetches checkpoint-to-checkpoint times and maps them to clean matrix index edge-costs.
+#         Returns: {(from_node_id, to_node_id): duration_in_seconds}
+#         """
+#         raw_travel_times = self.client.fetch_all_pages(self.travel_times_endpoint)
+#         print(
+#             f"[*] [Travel Times] Ingested {len(raw_travel_times)} macro corridor segments."
+#         )
+#
+#         macro_edge_costs = {}
+#         for segment in raw_travel_times:
+#             start_point = segment.get("StartPoint")
+#             end_point = segment.get("EndPoint")
+#             est_time_mins = segment.get("EstTime", 0)
+#
+#             if start_point in node_registry and end_point in node_registry:
+#                 from_id = node_registry[start_point]
+#                 to_id = node_registry[end_point]
+#
+#                 # Convert minutes to seconds for internal solver precision
+#                 macro_edge_costs[(from_id, to_id)] = int(est_time_mins * 60)
+#
+#         return macro_edge_costs

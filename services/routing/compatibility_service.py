@@ -19,6 +19,8 @@ class CompatibilityService:
         order_id: str,
     ) -> CompatibilityResult:
 
+
+
         result = await self.agent.evaluate(order_id)
 
         # ---------------------------------------------------------

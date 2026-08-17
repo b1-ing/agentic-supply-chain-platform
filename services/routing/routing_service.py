@@ -35,6 +35,7 @@ class RoutingService:
 
     def __init__(self):
 
+        #inits all the services needed
         self.compatibility_service = CompatibilityService()
         self.problem_builder = RoutingProblemBuilder()
         self.matrix_service = MatrixService()
@@ -50,6 +51,20 @@ class RoutingService:
     ) -> RoutePlan:
 
         for order in list(world.new_orders):
+
+            # ---------------------------------------------------------
+            # safety net to check if the order has been geocoded and snapped to graph
+            # ---------------------------------------------------------
+
+            if (
+                order.pickup_node is None
+                or order.delivery_node is None
+            ):
+                print(
+                    f"Skipping order {order.order_id}: "
+                    "pickup or delivery has not been resolved."
+                )
+                continue
 
             compatibility = await self.compatibility_service.evaluate(
                 world,
@@ -110,6 +125,22 @@ class RoutingService:
         # Solve CVRP
         # -------------------------------------------------------------
 
+        print("\n=== CVRP INPUT ===")
+
+        for i, location in enumerate(problem.locations):
+            print(
+                i,
+                location.kind,
+                location.order_id,
+                "node=",
+                location.graph_node,
+            )
+
+        print("\n=== PICKUP/DELIVERY PAIRS ===")
+
+        for pair in problem.pickup_delivery_pairs:
+            print(pair)
+
         routes = self.solver.solve(
             matrix=matrix.matrix,
             starts=problem.starts,
@@ -142,196 +173,6 @@ class RoutingService:
 
         return route_plan
 
-    # ================================================================
-    # COMPATIBILITY
-    # ================================================================
-
-    async def _evaluate_orders(
-        self,
-        world,
-    ) -> dict:
-        """
-        Evaluate compatibility for every new order and store the
-        result in WorldState.compatibility_results.
-
-        The LLM compatibility response is converted into the
-        application's CompatibilityResult model here.
-        """
-
-        for order in list(world.new_orders):
-            if (
-                order.pickup_node is None
-                or order.delivery_node is None
-            ):
-                print(
-                    f"Skipping order {order.order_id}: "
-                    "missing pickup or delivery graph node."
-                )
-                continue
-
-            result = await self.compatibility_service.evaluate(
-                world,
-                order.order_id
-            )
-
-            if not result.get("success", False):
-
-                return {
-                    "success": False,
-                    "status": "COMPATIBILITY_ERROR",
-                    "order_id": order.order_id,
-                    "error": result.get(
-                        "error",
-                        "Compatibility evaluation failed.",
-                    ),
-                }
-
-            status = self._map_compatibility_status(
-                result.get("status")
-            )
-
-            if status is None:
-
-                return {
-                    "success": False,
-                    "status": "COMPATIBILITY_ERROR",
-                    "order_id": order.order_id,
-                    "error": (
-                        "Unknown compatibility status: "
-                        f"{result.get('status')}"
-                    ),
-                }
-
-            compatible = [
-                CompatibleVehicle(
-                    vehicle_id=item["vehicle_id"],
-                    reason=item["reason"],
-                )
-                for item in result.get(
-                    "compatible",
-                    [],
-                )
-            ]
-
-            incompatible = [
-                IncompatibleVehicle(
-                    vehicle_id=item["vehicle_id"],
-                    reason=item["reason"],
-                )
-                for item in result.get(
-                    "incompatible",
-                    [],
-                )
-            ]
-
-            # --------------------------------------------------------
-            # IMPORTANT:
-            #
-            # Do not calculate vehicle indices here.
-            #
-            # The ProblemBuilder is responsible for converting
-            # vehicle IDs into indices after it selects the actual
-            # vehicle list used by OR-Tools.
-            # --------------------------------------------------------
-
-            world.compatibility_results[
-                order.order_id
-            ] = CompatibilityResult(
-                order_id=order.order_id,
-                compatible=compatible,
-                incompatible=incompatible,
-                allowed_vehicle_indices=[],
-                status=status,
-            )
-
-        return {
-            "success": True
-        }
-
-    @staticmethod
-    def _map_compatibility_status(
-        status: str | None,
-    ) -> CompatibilityStatus | None:
-        """
-        Map CompatibilityAgent statuses onto domain statuses.
-
-        Agent:
-            ROUTABLE
-            UNSERVICEABLE
-            UNCERTAIN
-
-        Domain:
-            ROUTABLE
-            WAITING
-            UNSERVICEABLE
-        """
-
-        if status == "ROUTABLE":
-            return CompatibilityStatus.ROUTABLE
-
-        if status == "UNSERVICEABLE":
-            return CompatibilityStatus.UNSERVICEABLE
-
-        if status == "UNCERTAIN":
-            return CompatibilityStatus.WAITING
-
-        return None
-
-    # ================================================================
-    # ORDER STATE
-    # ================================================================
-
-    @staticmethod
-    def _get_routable_orders(
-        world,
-    ):
-        """
-        Return orders that have successfully passed compatibility.
-        """
-
-        return [
-            order
-            for order in world.new_orders
-            if (
-                order.order_id
-                in world.compatibility_results
-                and
-                world.compatibility_results[
-                    order.order_id
-                ].status
-                == CompatibilityStatus.ROUTABLE
-            )
-        ]
-
-    @staticmethod
-    def _move_unserviceable_orders(
-        world,
-    ) -> None:
-        """
-        Move orders that cannot be serviced into
-        WorldState.unserviceable_orders.
-
-        Routable and waiting orders remain in new_orders.
-        """
-
-        for order in list(world.new_orders):
-
-            result = world.compatibility_results.get(
-                order.order_id
-            )
-
-            if result is None:
-                continue
-
-            if result.status != CompatibilityStatus.UNSERVICEABLE:
-                continue
-
-            world.new_orders.remove(order)
-
-            if order not in world.unserviceable_orders:
-                world.unserviceable_orders.append(
-                    order
-                )
 
     # ================================================================
     # WORLD STATE COMMIT

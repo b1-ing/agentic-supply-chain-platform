@@ -4,7 +4,7 @@ from uuid import uuid4
 import os
 from services.routing.compatibility_service import CompatibilityService
 from openai import AsyncOpenAI
-
+from models.routing.compatibility_result import CompatibilityStatus
 from models.order.order_assessment import OrderAssessment
 from services.world.world_manager import world_manager
 from models.order.incoming_order import IncomingOrder
@@ -14,84 +14,7 @@ from models.vehicles.vehicle import VehicleStatus
 from agents.tools.routing_tools import simple_fleet_route
 
 
-async def create_order(
-    assessment: dict,
-) -> dict:
 
-    missing_information = assessment.get(
-        "missing_information",
-        []
-    )
-
-    if missing_information:
-        return {
-            "success": False,
-            "error": "Order assessment is missing required information.",
-            "missing_information": missing_information,
-        }
-
-    data = assessment
-
-    world = world_manager.get_world()
-
-    VALID_ROUTING_TYPES = {
-                "avoid_road", "avoid_area", "required_road", "required_area",
-                "required_waypoint", "max_route_time", "max_route_distance",
-                "minimize_unnecessary_delay"
-            }
-
-    # 3. Defensive scrubbing BEFORE re-instantiation
-    if "constraints" in data:
-        cleaned_constraints = []
-        for c in data.get("constraints"):
-            # Normalize common LLM typos/truncations dynamically
-            c_type = c.get("type")
-            if c_type == "minimize_delay":
-                c["type"] = "minimize_unnecessary_delay"
-                c_type = "minimize_unnecessary_delay"
-
-            # Only keep it if it belongs to your literal Enum list
-            if c_type in VALID_ROUTING_TYPES:
-                cleaned_constraints.append(c)
-
-    order = IncomingOrder(
-        pickup_address=data["pickup_address"],
-        delivery_address=data["delivery_address"],
-
-        weight_kg=data.get("weight_kg"),
-
-        refrigerated=data.get("refrigerated", False),
-        hazardous=data.get("hazardous", False),
-        fragile=data.get("fragile", False),
-        oversized=data.get("oversized", False),
-
-        height_m=data.get("height_m"),
-
-        earliest_pickup=data.get("earliest_pickup"),
-        latest_pickup=data.get("latest_pickup"),
-        earliest_delivery=data.get("earliest_delivery"),
-        latest_delivery=data.get("latest_delivery"),
-
-        constraints=[
-            OrderConstraint(**constraint)
-            for constraint in cleaned_constraints
-        ],
-
-        notes=data.get("notes"),
-    )
-
-    order.order_id = (
-        order.order_id
-        or f"ORDER-{uuid4().hex[:8].upper()}"
-    )
-
-    world.new_orders.append(order)
-
-    return {
-        "success": True,
-        "order_id": order.order_id,
-        "status": "NEW",
-    }
 client = AsyncOpenAI(
     api_key=os.environ["OPENAI_API_KEY"]
 )
@@ -106,7 +29,6 @@ depot_context = [
     for depot in world.depots
 ]
 
-print(depot_context)
 SYSTEM_PROMPT = """
 You are the order-assessment component of an agentic supply-chain
 management system.
@@ -449,6 +371,11 @@ system_prompt = SYSTEM_PROMPT.replace(
 async def assess_order(
     prompt: str,
 ) -> dict:
+    """
+    Processes a request for a new order from a prompt to operations agent,
+    extracting info such as pickup and dropoff points, as well as
+    making reasonable and strongly-supported inferences for constraints.
+    """
 
     response = await client.responses.parse(
         model="gpt-5.4",
@@ -473,6 +400,89 @@ async def assess_order(
         )
 
     return assessment.model_dump()
+
+
+
+async def create_order(
+    assessment: dict,
+) -> dict:
+
+    missing_information = assessment.get(
+        "missing_information",
+        []
+    )
+
+    if missing_information:
+        return {
+            "success": False,
+            "error": "Order assessment is missing required information.",
+            "missing_information": missing_information,
+        }
+
+    data = assessment
+
+    world = world_manager.get_world()
+
+    VALID_ROUTING_TYPES = {
+                "avoid_road", "avoid_area", "required_road", "required_area",
+                "required_waypoint", "max_route_time", "max_route_distance",
+                "minimize_unnecessary_delay"
+            }
+
+    # 3. Defensive scrubbing BEFORE re-instantiation
+    if "constraints" in data:
+        cleaned_constraints = []
+        for c in data.get("constraints"):
+            # Normalize common LLM typos/truncations dynamically
+            c_type = c.get("type")
+            if c_type == "minimize_delay":
+                c["type"] = "minimize_unnecessary_delay"
+                c_type = "minimize_unnecessary_delay"
+
+            # Only keep it if it belongs to your literal Enum list
+            if c_type in VALID_ROUTING_TYPES:
+                cleaned_constraints.append(c)
+
+    order = IncomingOrder(
+        pickup_address=data["pickup_address"],
+        delivery_address=data["delivery_address"],
+
+        weight_kg=data.get("weight_kg"),
+
+        refrigerated=data.get("refrigerated", False),
+        hazardous=data.get("hazardous", False),
+        fragile=data.get("fragile", False),
+        oversized=data.get("oversized", False),
+
+        height_m=data.get("height_m"),
+
+        earliest_pickup=data.get("earliest_pickup"),
+        latest_pickup=data.get("latest_pickup"),
+        earliest_delivery=data.get("earliest_delivery"),
+        latest_delivery=data.get("latest_delivery"),
+
+        constraints=[
+            OrderConstraint(**constraint)
+            for constraint in cleaned_constraints
+        ],
+
+        notes=data.get("notes"),
+    )
+
+    order.order_id = (
+        order.order_id
+        or f"ORDER-{uuid4().hex[:8].upper()}"
+    )
+
+    world.new_orders.append(order)
+
+    return {
+        "success": True,
+        "order_id": order.order_id,
+        "status": "NEW",
+    }
+
+
 
 async def evaluate_compatibility(
     order_id: str,
@@ -918,6 +928,12 @@ async def modify_active_order(
             )
 
     except Exception as exc:
+        for field, value in previous_values.items():
+            setattr(
+                order,
+                field,
+                value,
+            )
         return {
             "success": False,
             "order_id": order_id,
@@ -926,79 +942,271 @@ async def modify_active_order(
             ),
         }
 
-    # ============================================================
-    # FIND VEHICLE / ROUTE
-    #
-    # Do this before potentially changing routing state so that
-    # we know exactly which operational route must be updated.
-    # ============================================================
-
-    vehicle = None
-    route = None
-
     if routing_invalidated:
 
-        vehicle = next(
+        # --------------------------------------------------------
+        # Re-evaluate compatibility after the order modification.
+        #
+        # The existing vehicle may no longer be capable of
+        # servicing the modified order.
+        # --------------------------------------------------------
+
+        compatibility_service = CompatibilityService()
+
+        compatibility = await compatibility_service.evaluate(
+            world,
+            order_id,
+        )
+
+        print(compatibility)
+
+        if compatibility.status == CompatibilityStatus.UNSERVICEABLE:
+            for field, value in previous_values.items():
+                setattr(
+                    order,
+                    field,
+                    value,
+                )
+            return {
+                "success": False,
+                "order_id": order_id,
+                "error": (
+                    "The modified order is no longer serviceable "
+                    "by any available vehicle."
+                ),
+            }
+
+        if compatibility.status == CompatibilityStatus.WAITING:
+            for field, value in previous_values.items():
+                setattr(
+                    order,
+                    field,
+                    value,
+                )
+            return {
+                "success": False,
+                "order_id": order_id,
+                "status": "WAITING",
+                "error": (
+                    "The modified order currently has no compatible "
+                    "vehicle available."
+                ),
+            }
+
+        # --------------------------------------------------------
+        # Determine whether the currently assigned vehicle is
+        # still allowed to service the modified order.
+        # --------------------------------------------------------
+
+        allowed_vehicle_indices = (
+            compatibility.allowed_vehicle_indices
+        )
+
+        current_vehicle = next(
             (
                 vehicle
                 for vehicle in world.vehicles
-                if vehicle.vehicle_id
-                == order.assigned_vehicle
+                if vehicle.vehicle_id == order.assigned_vehicle
             ),
             None,
         )
 
-        if vehicle is None:
-            return {
-                "success": False,
-                "order_id": order_id,
-                "error": (
-                    f"Assigned vehicle "
-                    f"'{order.assigned_vehicle}' "
-                    "could not be found."
-                ),
-            }
+        current_vehicle_index = None
 
-        # --------------------------------------------------------
-        # Find active route
-        # --------------------------------------------------------
+        if current_vehicle is not None:
+            current_vehicle_index = world.vehicles.index(
+                current_vehicle
+            )
 
-        current_route_id = getattr(
-            vehicle,
-            "current_route_id",
-            None,
+        current_vehicle_still_compatible = (
+            current_vehicle_index is not None
+            and current_vehicle_index in allowed_vehicle_indices
         )
 
-        if current_route_id is not None:
+        # --------------------------------------------------------
+        # Existing vehicle is still valid.
+        # --------------------------------------------------------
 
-            route = next(
-                (
-                    route
-                    for route in world.routes
-                    if route.route_id
-                    == current_route_id
-                ),
-                None,
+        if current_vehicle_still_compatible:
+
+            vehicle = current_vehicle
+
+        # --------------------------------------------------------
+        # Existing vehicle is no longer valid.
+        #
+        # Example:
+        #
+        #   Before modification:
+        #       Vehicle A = normal truck
+        #
+        #   After modification:
+        #       order.refrigerated = True
+        #
+        #   Vehicle A is now incompatible.
+        #
+        #   Select another compatible vehicle.
+        # --------------------------------------------------------
+
+        else:
+
+            compatible_vehicle_index = (
+                allowed_vehicle_indices[0]
+                if allowed_vehicle_indices
+                else None
             )
 
-        # Fallback
-        if route is None:
+            if compatible_vehicle_index is None:
+                for field, value in previous_values.items():
+                    setattr(
+                        order,
+                        field,
+                        value,
+                    )
+                return {
+                    "success": False,
+                    "order_id": order_id,
+                    "status": "UNSERVICEABLE",
+                    "error": (
+                        "The currently assigned vehicle is no longer "
+                        "compatible with the modified order, and no "
+                        "replacement vehicle is available."
+                    ),
+                }
 
-            route = getattr(
+            vehicle = world.vehicles[
+                compatible_vehicle_index
+            ]
+
+            # Remove the old assignment.
+            order.assigned_vehicle = vehicle.vehicle_id
+
+        # --------------------------------------------------------
+        # Determine whether the order remains on its existing
+        # vehicle or needs to be reassigned.
+        # --------------------------------------------------------
+
+        vehicle_changed = (
+            current_vehicle is not None
+            and vehicle.vehicle_id != current_vehicle.vehicle_id
+        )
+
+        route = None
+
+        # ========================================================
+        # CASE 1: SAME VEHICLE
+        #
+        # The existing vehicle is still compatible, so we can
+        # modify/reroute its existing operational route.
+        # ========================================================
+
+        if not vehicle_changed:
+
+            current_route_id = getattr(
                 vehicle,
-                "current_route",
+                "current_route_id",
                 None,
             )
 
-        if route is None:
-            return {
-                "success": False,
-                "order_id": order_id,
-                "error": (
-                    f"Vehicle '{vehicle.vehicle_id}' "
-                    "does not have an active route."
-                ),
-            }
+            if current_route_id is not None:
+
+                route = next(
+                    (
+                        existing_route
+                        for existing_route in world.routes
+                        if existing_route.route_id == current_route_id
+                    ),
+                    None,
+                )
+
+            # Fallback
+            if route is None:
+
+                route = getattr(
+                    vehicle,
+                    "current_route",
+                    None,
+                )
+
+            if route is None:
+                for field, value in previous_values.items():
+                    setattr(
+                        order,
+                        field,
+                        value,
+                    )
+
+                return {
+                    "success": False,
+                    "order_id": order_id,
+                    "error": (
+                        f"Vehicle '{vehicle.vehicle_id}' "
+                        "does not have an active route."
+                    ),
+                }
+
+
+        # ========================================================
+        # CASE 2: REPLACEMENT VEHICLE
+        #
+        # The old vehicle is no longer compatible.
+        #
+        # The replacement vehicle does NOT need an existing route.
+        # A new route will be constructed later.
+        # ========================================================
+
+        else:
+
+            # Preserve the old vehicle so its route can be cleaned up.
+            old_vehicle = current_vehicle
+
+            old_route = None
+
+            old_route_id = getattr(
+                old_vehicle,
+                "current_route_id",
+                None,
+            )
+
+            if old_route_id is not None:
+
+                old_route = next(
+                    (
+                        existing_route
+                        for existing_route in world.routes
+                        if existing_route.route_id == old_route_id
+                    ),
+                    None,
+                )
+
+            if old_route is None:
+
+                old_route = getattr(
+                    old_vehicle,
+                    "current_route",
+                    None,
+                )
+
+            # ----------------------------------------------------
+            # Remove the old vehicle's active route.
+            # ----------------------------------------------------
+
+            if old_route is not None:
+
+                if old_route in world.routes:
+                    world.routes.remove(old_route)
+
+                old_vehicle.current_route_id = None
+                old_vehicle.current_route = None
+
+                # Only return the old vehicle to AVAILABLE if it
+                # has no other operational work.
+                old_vehicle.status = VehicleStatus.IDLE
+
+            # ----------------------------------------------------
+            # Replacement vehicle starts with no active route.
+            # ----------------------------------------------------
+
+            route = None
 
     # ============================================================
     # RESOLVE NEW ADDRESSES
@@ -1026,6 +1234,12 @@ async def modify_active_order(
             )
 
             if not result["success"]:
+                for field, value in previous_values.items():
+                    setattr(
+                        order,
+                        field,
+                        value,
+                    )
                 return {
                     "success": False,
                     "order_id": order_id,
@@ -1058,6 +1272,12 @@ async def modify_active_order(
             )
 
             if not result["success"]:
+                for field, value in previous_values.items():
+                    setattr(
+                        order,
+                        field,
+                        value,
+                    )
                 return {
                     "success": False,
                     "order_id": order_id,
@@ -1256,36 +1476,194 @@ async def modify_active_order(
             DisruptionService,
         )
 
-        disruption_service = (
-            DisruptionService()
-        )
+        disruption_service = DisruptionService()
 
-        reroute_result = (
-            await disruption_service.reroute_route(
-                world=world,
-                route=route,
-                vehicle=vehicle,
-                avoid_roads=avoid_roads,
-                avoid_areas=avoid_areas,
+        # ========================================================
+        # Existing vehicle
+        #
+        # Reroute its existing operational route.
+        # ========================================================
+
+        if route is not None:
+
+            reroute_result = (
+                await disruption_service.reroute_route(
+                    world=world,
+                    route=route,
+                    vehicle=vehicle,
+                    avoid_roads=avoid_roads,
+                    avoid_areas=avoid_areas,
+                )
             )
-        )
 
-        if not reroute_result["success"]:
-            return {
-                "success": False,
-                "order_id": order_id,
-                "updated_fields": list(
-                    updates.keys()
+        # ========================================================
+        # Replacement vehicle
+        #
+        # There is no existing route to reroute.
+        # Build a fresh route from the replacement vehicle's
+        # current position -> pickup -> delivery.
+        # ========================================================
+
+        else:
+
+            from agents.tools.routing_tools import (
+                simple_routing_tool,
+            )
+            from models.order.routing_location import (
+                RoutingLocation,
+            )
+            from models.routing.route_segment import (
+                RouteSegment,
+            )
+            from models.routing.route_stop import (
+                RouteStop,
+            )
+            from models.routing.vehicle_route import (
+                VehicleRoute,
+            )
+            from uuid import uuid4
+
+            # ----------------------------------------------------
+            # Build routing locations
+            # ----------------------------------------------------
+
+            origin = RoutingLocation(
+                matrix_index=0,
+                graph_node=vehicle.current_node,
+                lat=vehicle.current_lat,
+                lon=vehicle.current_lon,
+                kind="vehicle",
+            )
+
+            pickup = RoutingLocation(
+                matrix_index=1,
+                graph_node=order.pickup_node,
+                lat=order.pickup_lat,
+                lon=order.pickup_lon,
+                kind="pickup",
+                order_id=order.order_id,
+            )
+
+            delivery = RoutingLocation(
+                matrix_index=2,
+                graph_node=order.delivery_node,
+                lat=order.delivery_lat,
+                lon=order.delivery_lon,
+                kind="delivery",
+                order_id=order.order_id,
+            )
+
+            # ----------------------------------------------------
+            # Build route legs
+            # ----------------------------------------------------
+
+            legs = [
+                (origin, pickup),
+                (pickup, delivery),
+                (delivery, origin),
+            ]
+
+            segments = []
+
+            total_distance = 0.0
+            total_travel_time = 0.0
+
+            for leg_origin, leg_destination in legs:
+
+                result = simple_routing_tool.route_locations(
+                    world=world,
+                    origin=leg_origin,
+                    destination=leg_destination,
+                    avoid_roads=avoid_roads,
+                    avoid_areas=avoid_areas,
+                    required_waypoints=required_waypoints,
+                )
+
+                if not result["success"]:
+                    for field, value in previous_values.items():
+                        setattr(
+                            order,
+                            field,
+                            value,
+                        )
+                    return {
+                        "success": False,
+                        "order_id": order_id,
+                        "vehicle_id": vehicle.vehicle_id,
+                        "status": "UNROUTABLE",
+                        "error": result.get("error"),
+                    }
+
+                route_data = result["route"]
+
+                segment = RouteSegment(
+                    nodes=route_data["nodes"],
+                    geometry=route_data["geometry"],
+                    distance=route_data["distance_m"],
+                    travel_time=route_data["travel_time_s"],
+                    instructions=[],
+                )
+
+                segments.append(segment)
+
+                total_distance += route_data["distance_m"]
+                total_travel_time += route_data["travel_time_s"]
+
+            # ----------------------------------------------------
+            # Build new route
+            # ----------------------------------------------------
+
+            route_id = (
+                f"ROUTE-{uuid4().hex[:8].upper()}"
+            )
+
+            route = VehicleRoute(
+                route_id=route_id,
+                vehicle_id=vehicle.vehicle_id,
+                stops=[
+                    RouteStop(
+                        sequence=0,
+                        location=origin,
+                    ),
+                    RouteStop(
+                        sequence=1,
+                        location=pickup,
+                    ),
+                    RouteStop(
+                        sequence=2,
+                        location=delivery,
+                    ),
+                    RouteStop(
+                        sequence=3,
+                        location=origin,
+                    ),
+                ],
+                segments=segments,
+                total_distance=total_distance,
+                total_travel_time=total_travel_time,
+            )
+
+            # ----------------------------------------------------
+            # Commit new route
+            # ----------------------------------------------------
+
+            vehicle.current_route_id = route_id
+            vehicle.current_route = route
+            vehicle.status = VehicleStatus.EN_ROUTE
+
+            world.routes.append(route)
+
+            reroute_result = {
+                "success": True,
+                "routing_mode": "graph",
+                "route_id": route_id,
+                "vehicle_id": vehicle.vehicle_id,
+                "distance_m": total_distance,
+                "travel_time_s": total_travel_time,
+                "message": (
+                    "Order reassigned to a compatible vehicle "
+                    "and a new route was constructed."
                 ),
-                "previous_values": previous_values,
-                "routing_invalidated": True,
-                "recommend_replan": True,
-                "status": "IN_PROGRESS",
-                "error": (
-                    "Order was modified, but the "
-                    "new route could not be constructed."
-                ),
-                "reroute": reroute_result,
             }
 
     # ============================================================

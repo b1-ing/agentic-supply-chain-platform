@@ -29,33 +29,30 @@ You are responsible for deciding:
 - why each vehicle is compatible or incompatible
 - whether compatibility cannot be determined
 
-You may consider all relevant information provided about:
+Compatibility means that the vehicle has the physical and operational
+capabilities required to service the order.
 
-ORDER:
-- weight
-- volume
-- pallets
-- refrigerated requirement
-- hazardous requirement
-- fragile requirement
-- oversized requirement
-- height requirements
-- width requirements
-- length requirements
-- explicit operational constraints
-- pickup/delivery requirements
+IMPORTANT:
 
-VEHICLE:
-- status
-- current location
-- current route
-- remaining capacity
-- maximum weight
-- refrigeration capability
-- hazardous certification
-- dimensions
-- other explicitly provided capabilities
+Vehicle compatibility and vehicle availability are separate concepts.
 
+A vehicle may be EN_ROUTE and still be compatible with an order.
+
+If a vehicle is already assigned to the order being evaluated, it MUST
+still be evaluated for compatibility even if:
+
+- its status is EN_ROUTE
+- it has a current_route_id
+- it is not otherwise available for a new assignment
+
+An EN_ROUTE vehicle must NOT be excluded from the compatibility result
+merely because it is currently operating.
+
+For a vehicle already assigned to the order, determine whether it can
+CONTINUE servicing that order under the current order requirements.
+
+A vehicle that is EN_ROUTE because it is servicing a DIFFERENT order
+should not be treated as an available replacement vehicle.
 ============================================================
 IMPORTANT
 ============================================================
@@ -98,12 +95,21 @@ You are making a compatibility decision only.
 DECISION RULE
 ============================================================
 
-A vehicle should be marked COMPATIBLE only when the available
-information provides sufficient evidence that it can service
-the order.
+For each vehicle:
 
-If an important capability is unknown, mark the vehicle as
-UNCERTAIN rather than assuming compatibility.
+1. Determine whether the vehicle satisfies the order's requirements.
+2. If the vehicle is already assigned to this order, evaluate it even
+   if it is EN_ROUTE.
+3. Do not treat EN_ROUTE status alone as incompatibility.
+4. Do not treat AVAILABLE status alone as compatibility.
+5. If an important required capability is unknown, mark the vehicle
+   as UNCERTAIN rather than assuming compatibility.
+
+A vehicle is COMPATIBLE when there is sufficient evidence that it can
+service the order.
+
+A vehicle is INCOMPATIBLE only when there is sufficient evidence that
+it cannot satisfy the order requirements.
 
 ============================================================
 OUTPUT
@@ -122,10 +128,7 @@ class CompatibilityAgent:
 
         world = world_manager.get_world()
 
-        # ---------------------------------------------------------
-        # Find order
-        # ---------------------------------------------------------
-
+        #finds the target order to evaluate compatibility
         order = None
 
         for candidate in world.new_orders:
@@ -133,6 +136,7 @@ class CompatibilityAgent:
                 order = candidate
                 break
 
+        #falls back to checking orders in progress if it cannot find target order in
         if order is None:
             for candidate in world.orders_in_progress:
                 if candidate.order_id == order_id:
@@ -189,6 +193,9 @@ class CompatibilityAgent:
                     "status": str(vehicle.status),
                     "current_node": vehicle.current_node,
                     "current_route_id": vehicle.current_route_id,
+                    "is_current_order_vehicle": (
+                        vehicle.vehicle_id == order.assigned_vehicle
+                    ),
 
                     "max_weight_kg": vehicle.max_weight_kg,
 
@@ -201,6 +208,8 @@ class CompatibilityAgent:
                     "length_m": vehicle.length_m,
                 }
             )
+
+        print(vehicle_context)
 
         # ---------------------------------------------------------
         # Ask GPT-5.4

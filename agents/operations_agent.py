@@ -1,4 +1,66 @@
 # agent/operations_agent.py
+"""
+Operations Agent for the agentic supply-chain control tower.
+
+This module defines the agent responsible for interpreting natural-language
+operational requests and orchestrating the appropriate deterministic services.
+
+The Operations Agent acts as the decision and coordination layer between the
+user and the operational WorldState. It determines what needs to happen and
+selects the appropriate tools, while domain services remain responsible for
+performing the actual operational computations and state mutations.
+
+The agent may orchestrate operations such as:
+
+    - assessing natural-language orders
+    - creating orders
+    - resolving and geocoding locations
+    - evaluating vehicle compatibility
+    - selecting a routing strategy
+    - planning routes
+    - observing the current operational world
+    - modifying active orders
+    - responding to operational disruptions
+
+The agent does not directly perform deterministic routing, vehicle
+compatibility calculations, graph optimisation, or geospatial processing.
+Those responsibilities are delegated to the appropriate services and tools.
+
+The intended execution model is:
+
+    User request
+        |
+        v
+    Operations Agent
+        |
+        v
+    Tool selection / orchestration
+        |
+        v
+    Deterministic services
+        |
+        v
+    WorldState
+        |
+        v
+    Agent observes updated state
+        |
+        v
+    Final response
+
+The WorldState remains the authoritative source of operational truth.
+Agent reasoning, intermediate tool results, and trace information must not
+be treated as independent sources of truth.
+
+The agent therefore follows the broader control-tower loop:
+
+    Observe -> Assess -> Plan -> Execute -> Observe again
+
+This separation allows the LLM to provide flexible natural-language
+reasoning and orchestration while keeping operational decisions such as
+routing, compatibility, constraint enforcement, and fleet optimisation
+deterministic and reproducible.
+"""
 
 from openai import AsyncOpenAI
 
@@ -19,139 +81,11 @@ You have access to tools for:
 - routing
 - reading and modifying the operational world
 
-============================================================
-REQUEST TYPES
-============================================================
 
-There are two fundamentally different types of requests.
-
-------------------------------------------------------------
-A. READ-ONLY ROUTE REQUEST
-------------------------------------------------------------
-
-Examples:
-
-"What's the fastest route from Bukit Timah Plaza to Clementi Mall?"
-
-"Find a route from A to B avoiding PIE."
-
-"How do I get from X to Y?"
-
-For these requests:
-
-1. Use route_between_places.
-2. Do NOT create an operational order.
-3. Do NOT assign a vehicle.
-4. Do NOT modify WorldState.
-
-Return the calculated route.
-
-------------------------------------------------------------
-B. OPERATIONAL LOGISTICS REQUEST
-------------------------------------------------------------
-
-Examples:
-
-"Deliver 10kg of cold fish from Bukit Timah Plaza to Clementi Mall."
-
-"Send this order from A to B."
-
-"Transport 500kg of goods from X to Y."
-
-"Deliver this refrigerated shipment while avoiding PIE."
-
-For these requests, the user is asking the system to
-perform an operational logistics action.
-
-You MUST execute the operational workflow:
-
-1. assess_order
-2. create_order
-3. evaluate compatibility
-4. plan fleet routes
-5. return the resulting operational state
-
-Do NOT stop after finding a point-to-point route.
-
-The route_between_places tool may be used as supporting
-information, but it is NOT a substitute for fleet routing.
-
-============================================================
-OPERATIONAL WORKFLOW
-============================================================
-
-For an operational logistics request:
-
-Step 1:
-Call assess_order to interpret the natural-language request.
-
-Step 2:
-If the assessment contains enough information to create
-the order, call create_order. Afterward, call geocode_order.
-
-Step 3:
-Evaluate vehicle compatibility.
-
-Step 4:
-If the order is serviceable, call the fleet routing tool.
-
-Step 5:
-The fleet routing result should update WorldState with:
-- the order status
-- vehicle assignment
-- vehicle route
-- route information
-
-Step 6:
-Return the actual order ID, assigned vehicle, and route
-information to the user.
-
-Never claim that an order was created, assigned, or routed
-unless the corresponding tool actually succeeded.
-
-============================================================
-ROUTING STRATEGY
-============================================================
-
-Do not automatically call plan_routes for every delivery.
-
-After creating an operational order and evaluating compatibility,
-call decide_routing_strategy.
-
-If strategy is SIMPLE:
-
-1. Call simple_fleet_route.
-2. Do NOT call route_between_places as the final operational action.
-3. simple_fleet_route MUST:
-   - select a compatible vehicle
-   - apply routing constraints
-   - construct the route
-   - assign the vehicle
-   - persist the VehicleRoute
-   - update the order
-   - update WorldState
-
-route_between_places is read-only and must not be used
-as a substitute for simple fleet routing.
-
-If the strategy is CVRP:
-
-- Call plan_routes.
-- Use the fleet-wide optimisation pipeline.
-- Consider all relevant routable orders and vehicles.
-
-The routing strategy decision determines whether OR-Tools/CVRP
-is necessary.
 
 ============================================================
 IMPORTANT
 ============================================================
-
-"route from A to B"
-means READ-ONLY routing.
-
-"deliver/transport/send/dispatch X from A to B"
-means OPERATIONAL execution.
 
 When the user explicitly asks to deliver or transport cargo,
 do not merely provide directions.
@@ -197,6 +131,8 @@ class OperationsAgent:
                 return message.content
 
             # Preserve GPT's tool-call message
+            # this is to emit the agent's tool-calls to the /agents api which
+            # will then display these on the front end for visibility
             messages.append(message)
 
             for tool_call in message.tool_calls:
