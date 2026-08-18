@@ -934,12 +934,16 @@ def route_between_places(
 
 routing_service = RoutingService()
 
+
+
 def decide_routing_strategy(
     order_id: str,
 ) -> dict:
     """
     Decide whether an order should use simple routing
     or fleet-wide CVRP optimisation.
+
+    Currently deterministic code although it should become 
     """
 
     world = world_manager.get_world()
