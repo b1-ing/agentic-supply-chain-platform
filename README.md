@@ -126,11 +126,13 @@ From the project root, start the FastAPI application:
 python app/main.py
 ```
 
+The main API calls of interest are:
 ```text
-GET /api/world
-GET /api/routes
-GET /api/routes/{vehicle_id}
-POST /api/agent
+GET /api/world (Maintaining and observing `WorldState`)
+GET /api/vehicles (Observing vehicle fleet)
+GET /api/routes 
+GET /api/orders
+POST /api/agent (Send prompt to agent)
 ```
 
 The backend is responsible for:
