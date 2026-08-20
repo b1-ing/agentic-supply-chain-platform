@@ -104,6 +104,8 @@ class OperationsAgent:
 
     async def run(self, user_message: str, emit=None):
 
+        tool_trace = []
+
         messages = [
             {
                 "role": "system",
@@ -118,7 +120,7 @@ class OperationsAgent:
         while True:
 
             response = await self.client.chat.completions.create(
-                model="gpt-5.4",
+                model="gpt-5.4-mini-2026-03-17",
                 messages=messages,
                 tools=TOOLS_SCHEMA,
                 tool_choice="auto",
@@ -128,7 +130,10 @@ class OperationsAgent:
 
             # GPT is finished
             if not message.tool_calls:
-                return message.content
+                return {
+                    "content": message.content,
+                    "tool_calls": tool_trace,
+                }
 
             # Preserve GPT's tool-call message
             # this is to emit the agent's tool-calls to the /agents api which
@@ -142,6 +147,10 @@ class OperationsAgent:
                 arguments = json.loads(
                     tool_call.function.arguments
                 )
+                tool_trace.append({
+                    "name": name,
+                    "arguments": arguments,
+                })
 
                 trace_id = str(uuid.uuid4())
                 started = time.perf_counter()

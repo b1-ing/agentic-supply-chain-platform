@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/agentic-supply-chain-platform.iml" filepath="$PROJECT_DIR$/.idea/agentic-supply-chain-platform.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/agentic-supply-chain-platform@1.iml" filepath="$PROJECT_DIR$/.idea/agentic-supply-chain-platform@1.iml" />
     </modules>
   </component>
 </project>

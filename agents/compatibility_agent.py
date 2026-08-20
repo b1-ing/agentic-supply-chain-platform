@@ -216,7 +216,7 @@ class CompatibilityAgent:
         }
 
         response = await self.client.chat.completions.create(
-            model="gpt-5.4",
+            model="gpt-5.4-nano-2026-03-17",
             messages=[
                 {
                     "role": "system",

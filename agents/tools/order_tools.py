@@ -382,7 +382,7 @@ async def assess_order(
     """
 
     response = await client.responses.parse(
-        model="gpt-5.4",
+        model="gpt-5.4-nano-2026-03-17",
         input=[
             {
                 "role": "system",

@@ -1,0 +1,56 @@
+Index: .idea/agentic-supply-chain-platform@1.iml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/agentic-supply-chain-platform@1.iml b/.idea/agentic-supply-chain-platform@1.iml
+new file mode 100644
+--- /dev/null	(date 1787229711627)
++++ b/.idea/agentic-supply-chain-platform@1.iml	(date 1787229711627)
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<module external.system.id="pyproject.toml" type="PYTHON_MODULE" version="4">
++  <component name="NewModuleRootManager">
++    <content url="file://$MODULE_DIR$" />
++    <orderEntry type="jdk" jdkName="D:\code repos\agentic-supply-chain-platform\.venv" jdkType="Python SDK" />
++    <orderEntry type="sourceFolder" forTests="false" />
++  </component>
++</module>
+\ No newline at end of file
+Index: .idea/agentic-supply-chain-platform.iml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<module type=\"JAVA_MODULE\" version=\"4\">\r\n  <component name=\"NewModuleRootManager\" inherit-compiler-output=\"true\">\r\n    <exclude-output />\r\n    <content url=\"file://$MODULE_DIR$\">\r\n      <sourceFolder url=\"file://$MODULE_DIR$\" isTestSource=\"false\" />\r\n      <sourceFolder url=\"file://$MODULE_DIR$/graphs\" isTestSource=\"false\" />\r\n      <sourceFolder url=\"file://$MODULE_DIR$/models\" isTestSource=\"false\" />\r\n      <sourceFolder url=\"file://$MODULE_DIR$/venv/Lib/site-packages\" isTestSource=\"false\" />\r\n      <sourceFolder url=\"file://$MODULE_DIR$/services\" isTestSource=\"false\" />\r\n      <sourceFolder url=\"file://$MODULE_DIR$/venv/Lib/site-packages/pandas/tests/io\" isTestSource=\"false\" />\r\n      <sourceFolder url=\"file://$MODULE_DIR$/venv/Lib/site-packages/ortools/math_opt\" isTestSource=\"false\" />\r\n      <sourceFolder url=\"file://$MODULE_DIR$/venv/Lib/site-packages/tenacity\" isTestSource=\"false\" />\r\n      <sourceFolder url=\"file://$MODULE_DIR$/venv/Lib/site-packages/absl\" isTestSource=\"false\" />\r\n    </content>\r\n    <orderEntry type=\"inheritedJdk\" />\r\n    <orderEntry type=\"sourceFolder\" forTests=\"false\" />\r\n  </component>\r\n</module>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/agentic-supply-chain-platform.iml b/.idea/agentic-supply-chain-platform.iml
+--- a/.idea/agentic-supply-chain-platform.iml	(revision c2673fbe117c4e3d90b72c3d1024c445662baf49)
++++ b/.idea/agentic-supply-chain-platform.iml	(date 1787229708522)
+@@ -12,6 +12,7 @@
+       <sourceFolder url="file://$MODULE_DIR$/venv/Lib/site-packages/ortools/math_opt" isTestSource="false" />
+       <sourceFolder url="file://$MODULE_DIR$/venv/Lib/site-packages/tenacity" isTestSource="false" />
+       <sourceFolder url="file://$MODULE_DIR$/venv/Lib/site-packages/absl" isTestSource="false" />
++      <excludeFolder url="file://$MODULE_DIR$/.venv" />
+     </content>
+     <orderEntry type="inheritedJdk" />
+     <orderEntry type="sourceFolder" forTests="false" />
+Index: .idea/modules.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"ProjectModuleManager\">\r\n    <modules>\r\n      <module fileurl=\"file://$PROJECT_DIR$/.idea/agentic-supply-chain-platform.iml\" filepath=\"$PROJECT_DIR$/.idea/agentic-supply-chain-platform.iml\" />\r\n    </modules>\r\n  </component>\r\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/modules.xml b/.idea/modules.xml
+--- a/.idea/modules.xml	(revision c2673fbe117c4e3d90b72c3d1024c445662baf49)
++++ b/.idea/modules.xml	(date 1787229708538)
+@@ -3,6 +3,7 @@
+   <component name="ProjectModuleManager">
+     <modules>
+       <module fileurl="file://$PROJECT_DIR$/.idea/agentic-supply-chain-platform.iml" filepath="$PROJECT_DIR$/.idea/agentic-supply-chain-platform.iml" />
++      <module fileurl="file://$PROJECT_DIR$/.idea/agentic-supply-chain-platform@1.iml" filepath="$PROJECT_DIR$/.idea/agentic-supply-chain-platform@1.iml" />
+     </modules>
+   </component>
+ </project>
+\ No newline at end of file
