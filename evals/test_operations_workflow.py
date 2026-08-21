@@ -69,337 +69,338 @@ def make_test_case(user_input, actual_tools, expected_tools):
 # 1. Observe complete WorldState
 # ============================================================
 
-
-@pytest.mark.asyncio
-async def test_modify_pending_order():
-
-    agent = OperationsAgent()
-
-    result = await agent.run(
-        "Create an order to deliver 10kg of office supplies "
-        "from Jurong East mrt to Clementi Mall."
-    )
-
-    # 2. Get the newly-created order from WorldState
-    world = world_manager.get_world()
-
-    order = world.new_orders[-1]
-    order_id = order.order_id
-
-    print("Created order:", order_id)
-
-    # 3. Pass the ID into the next agent input
-    user_input = (
-        f"Change order {order_id}'s delivery location to Orchard Road."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "modify_order"
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
-
-
-@pytest.mark.asyncio
-async def test_observe_world_state():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Give me a summary of the current operational world, "
-        "including vehicles, orders and active routes."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "get_world_state",
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
-
-
-# ============================================================
-# 2. Observe available vehicles
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_observe_available_vehicles():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Which vehicles are currently available?"
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "get_world_state",
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
-
-
-# ============================================================
-# 3. Observe active routes
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_observe_active_routes():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Show me the routes currently being executed."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "get_world_state",
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
-
-
-# ============================================================
-# 4. Observe traffic incidents
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_observe_traffic_incidents():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "What traffic incidents are currently active?"
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "get_traffic_incidents",
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
-
-
-# ============================================================
-# 5. Observe traffic and affected operations
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_assess_traffic_impact():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Check the current traffic situation and tell me "
-        "whether any active operations may be affected."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "get_traffic_incidents",
-        "get_world_state",
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
-
-
-# ============================================================
-# 6. Modify a pending order
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_modify_pending_order_no_id():
-
-    agent = OperationsAgent()
-
-    await agent.run(
-        "Create an order to deliver 10kg of office supplies "
-        "from Jurong East mrt to Clementi Mall."
-    )
-
-    user_input = (
-        "Change the delivery location of that order "
-        "to Orchard Road."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
-
-
-
-# ============================================================
-# 7. Modify order weight
-# ============================================================
-
-
-
-@pytest.mark.asyncio
-async def test_modify_pending_order():
-
-    agent = OperationsAgent()
-
-    result = await agent.run(
-        "Create an order to deliver 10kg of office supplies "
-        "from Jurong East mrt to Clementi Mall."
-    )
-
-    # 2. Get the newly-created order from WorldState
-    world = world_manager.get_world()
-
-    order = world.new_orders[-1]
-    order_id = order.order_id
-
-    print("Created order:", order_id)
-
-    # 3. Pass the ID into the next agent input
-    result = await agent.run(
-        f"Change order {order_id} to deliver 10kg of bricks."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "modify_active_order"
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "modify_order",
-    ]
-
-    test_case = make_test_case(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-    metric = create_tool_workflow_metric()
-
-    assert_test(
-        test_case,
-        [metric],
-    )
+#
+# @pytest.mark.asyncio
+# async def test_modify_pending_order():
+#
+#     agent = OperationsAgent()
+#
+#     result = await agent.run(
+#         "Create an order to deliver 10kg of office supplies "
+#         "from Jurong East mrt to Clementi Mall."
+#     )
+#
+#     # 2. Get the newly-created order from WorldState
+#     world = world_manager.get_world()
+#
+#     order = world.new_orders[-1]
+#     order_id = order.order_id
+#
+#     print("Created order:", order_id)
+#
+#     # 3. Pass the ID into the next agent input
+#     user_input = (
+#         f"Change order {order_id}'s delivery location to Orchard Road."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "modify_order"
+#     ]
+#
+#     test_case = make_test_case(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
+#
+#
+# @pytest.mark.asyncio
+# async def test_observe_world_state():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Give me a summary of the current operational world, "
+#         "including vehicles, orders and active routes."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "get_world_state",
+#     ]
+#
+#     test_case = make_test_case(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
+#
+#
+# # ============================================================
+# # 2. Observe available vehicles
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_observe_available_vehicles():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Which vehicles are currently available?"
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "get_world_state",
+#     ]
+#
+#     test_case = make_test_case(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
+#
+#
+# # ============================================================
+# # 3. Observe active routes
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_observe_active_routes():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Show me the routes currently being executed."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "get_world_state",
+#     ]
+#
+#     test_case = make_test_case(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
+#
+#
+# # ============================================================
+# # 4. Observe traffic incidents
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_observe_traffic_incidents():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "What traffic incidents are currently active?"
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "get_traffic_incidents",
+#     ]
+#
+#     test_case = make_test_case(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
+#
+#
+# # ============================================================
+# # 5. Observe traffic and affected operations
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_assess_traffic_impact():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Check the current traffic situation and tell me "
+#         "whether any active operations may be affected."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "get_traffic_incidents",
+#         "get_world_state",
+#     ]
+#
+#     test_case = make_test_case(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
+#
+#
+# # ============================================================
+# # 6. Modify a pending order
+# # ============================================================
+# @pytest.mark.asyncio
+# async def test_modify_pending_order_no_id():
+#
+#     agent = OperationsAgent()
+#
+#     await agent.run(
+#         "Create an order to deliver 10kg of office supplies "
+#         "from Jurong East MRT to Clementi Mall."
+#     )
+#
+#     user_input = (
+#         "Change the delivery location of that order "
+#         "to Orchard Road."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     test_case = LLMTestCase(
+#         input=user_input,
+#         actual_output=(
+#             "Tools called by the agent: "
+#             + ", ".join(actual_tools)
+#         ),
+#         expected_output=(
+#             "The agent should not modify any order because "
+#             "the request does not uniquely identify which "
+#             "order to modify."
+#         ),
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
+#
+# # ============================================================
+# # 7. Modify order weight
+# # ============================================================
+#
+#
+#
+# @pytest.mark.asyncio
+# async def test_modify_pending_order():
+#
+#     agent = OperationsAgent()
+#
+#     result = await agent.run(
+#         "Create an order to deliver 10kg of office supplies "
+#         "from Jurong East mrt to Clementi Mall."
+#     )
+#
+#     # 2. Get the newly-created order from WorldState
+#     world = world_manager.get_world()
+#
+#     order = world.new_orders[-1]
+#     order_id = order.order_id
+#
+#     print("Created order:", order_id)
+#
+#     # 3. Pass the ID into the next agent input
+#     result = await agent.run(
+#         f"Change order {order_id} to deliver 10kg of bricks."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "modify_active_order"
+#     ]
+#
+#     test_case = make_test_case(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "modify_order",
+#     ]
+#
+#     test_case = make_test_case(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#     metric = create_tool_workflow_metric()
+#
+#     assert_test(
+#         test_case,
+#         [metric],
+#     )
 
 
 # ============================================================

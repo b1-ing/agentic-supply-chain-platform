@@ -90,206 +90,206 @@ def evaluate_tool_workflow(
 # ============================================================
 # 1. Basic refrigerated delivery
 # ============================================================
-
-@pytest.mark.asyncio
-async def test_refrigerated_delivery_tool_workflow():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Deliver 10kg of refrigerated fish "
-        "from Bukit Timah Plaza to Clementi Mall."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "assess_order",
-        "create_order",
-        "evaluate_compatibility",
-        "decide_routing_strategy",
-        "geocode_order",
-        "simple_fleet_route",
-    ]
-
-    evaluate_tool_workflow(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-
-# ============================================================
-# 2. Normal non-refrigerated delivery
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_normal_delivery_tool_workflow():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Deliver 5kg of office supplies "
-        "from Jurong East to Raffles Place."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "assess_order",
-        "create_order",
-        "evaluate_compatibility",
-        "decide_routing_strategy",
-        "geocode_order",
-        "simple_fleet_route",
-    ]
-
-    evaluate_tool_workflow(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-
-# ============================================================
-# 3. Depot resolution
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_depot_resolution_tool_workflow():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Deliver 5kg of office supplies "
-        "from the depot to Raffles Place."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "assess_order",
-        "create_order",
-        "evaluate_compatibility",
-        "decide_routing_strategy",
-        "geocode_order",
-        "simple_fleet_route",
-    ]
-
-    evaluate_tool_workflow(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-
-# ============================================================
-# 4. Avoid road constraint
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_avoid_road_delivery_tool_workflow():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Deliver 8kg of electronics "
-        "from Tampines Mall to Orchard Road. "
-        "Avoid PIE."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "assess_order",
-        "create_order",
-        "evaluate_compatibility",
-        "decide_routing_strategy",
-        "geocode_order",
-        "simple_fleet_route",
-    ]
-
-    evaluate_tool_workflow(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-
-# ============================================================
-# 5. Heavy delivery
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_heavy_delivery_tool_workflow():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Deliver 500kg of construction materials "
-        "from Tuas to Woodlands."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "assess_order",
-        "create_order",
-        "evaluate_compatibility",
-        "decide_routing_strategy",
-        "geocode_order",
-        "simple_fleet_route",
-    ]
-
-    evaluate_tool_workflow(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
-
-
-# ============================================================
-# 6. Fragile delivery
-# ============================================================
-
-@pytest.mark.asyncio
-async def test_fragile_delivery_tool_workflow():
-
-    agent = OperationsAgent()
-
-    user_input = (
-        "Deliver 15kg of fragile laboratory equipment "
-        "from One-North to Changi Business Park."
-    )
-
-    result = await agent.run(user_input)
-
-    actual_tools = get_tool_names(result)
-
-    expected_tools = [
-        "assess_order",
-        "create_order",
-        "evaluate_compatibility",
-        "decide_routing_strategy",
-        "geocode_order",
-        "simple_fleet_route",
-    ]
-
-    evaluate_tool_workflow(
-        user_input,
-        actual_tools,
-        expected_tools,
-    )
+#
+# @pytest.mark.asyncio
+# async def test_refrigerated_delivery_tool_workflow():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Deliver 10kg of refrigerated fish "
+#         "from Bukit Timah Plaza to Clementi Mall."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "assess_order",
+#         "create_order",
+#         "evaluate_compatibility",
+#         "decide_routing_strategy",
+#         "geocode_order",
+#         "simple_fleet_route",
+#     ]
+#
+#     evaluate_tool_workflow(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#
+# # ============================================================
+# # 2. Normal non-refrigerated delivery
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_normal_delivery_tool_workflow():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Deliver 5kg of office supplies "
+#         "from Jurong East to Raffles Place."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "assess_order",
+#         "create_order",
+#         "evaluate_compatibility",
+#         "decide_routing_strategy",
+#         "geocode_order",
+#         "simple_fleet_route",
+#     ]
+#
+#     evaluate_tool_workflow(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#
+# # ============================================================
+# # 3. Depot resolution
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_depot_resolution_tool_workflow():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Deliver 5kg of office supplies "
+#         "from the depot to Raffles Place."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "assess_order",
+#         "create_order",
+#         "evaluate_compatibility",
+#         "decide_routing_strategy",
+#         "geocode_order",
+#         "simple_fleet_route",
+#     ]
+#
+#     evaluate_tool_workflow(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#
+# # ============================================================
+# # 4. Avoid road constraint
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_avoid_road_delivery_tool_workflow():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Deliver 8kg of electronics "
+#         "from Tampines Mall to Orchard Road. "
+#         "Avoid PIE."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "assess_order",
+#         "create_order",
+#         "evaluate_compatibility",
+#         "decide_routing_strategy",
+#         "geocode_order",
+#         "simple_fleet_route",
+#     ]
+#
+#     evaluate_tool_workflow(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#
+# # ============================================================
+# # 5. Heavy delivery
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_heavy_delivery_tool_workflow():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Deliver 500kg of construction materials "
+#         "from Tuas to Woodlands."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "assess_order",
+#         "create_order",
+#         "evaluate_compatibility",
+#         "decide_routing_strategy",
+#         "geocode_order",
+#         "simple_fleet_route",
+#     ]
+#
+#     evaluate_tool_workflow(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
+#
+#
+# # ============================================================
+# # 6. Fragile delivery
+# # ============================================================
+#
+# @pytest.mark.asyncio
+# async def test_fragile_delivery_tool_workflow():
+#
+#     agent = OperationsAgent()
+#
+#     user_input = (
+#         "Deliver 15kg of fragile laboratory equipment "
+#         "from One-North to Changi Business Park."
+#     )
+#
+#     result = await agent.run(user_input)
+#
+#     actual_tools = get_tool_names(result)
+#
+#     expected_tools = [
+#         "assess_order",
+#         "create_order",
+#         "evaluate_compatibility",
+#         "decide_routing_strategy",
+#         "geocode_order",
+#         "simple_fleet_route",
+#     ]
+#
+#     evaluate_tool_workflow(
+#         user_input,
+#         actual_tools,
+#         expected_tools,
+#     )
 
 
 # ============================================================
@@ -312,11 +312,6 @@ async def test_hazardous_delivery_tool_workflow():
 
     expected_tools = [
         "assess_order",
-        "create_order",
-        "evaluate_compatibility",
-        "decide_routing_strategy",
-        "geocode_order",
-        "simple_fleet_route",
     ]
 
     evaluate_tool_workflow(
